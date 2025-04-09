@@ -3,7 +3,7 @@
 </script>
 
 <div>
-    <Card.Root class="max-w-[80vw] sm:max-w-[600px] w-full mx-auto">
+    <Card.Root class="max-w-[50vw] w-full mx-auto">
         <Card.Header>
             <Card.Title class="flex justify-between">
                 <p>March1</p>
