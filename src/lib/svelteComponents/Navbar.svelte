@@ -3,6 +3,7 @@
     import { Button } from '$lib/components/ui/button';
     import { Moon, Sun } from 'lucide-svelte';
     import { onMount } from 'svelte';
+    import { Link } from 'svelte-routing';
   
     let theme = 'light';
   
@@ -72,7 +73,7 @@
           {/if}
         </Button>
         <Button >
-          <a href="/login">Login</a>
+          <Link to="/login">Login</Link>
         </Button>
       </div>
     </div>
