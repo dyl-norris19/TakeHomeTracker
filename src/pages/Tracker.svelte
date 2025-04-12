@@ -1,8 +1,8 @@
 <script lang="ts">
-    import Navbar from '../lib/svelteComponents/Navbar.svelte'
-    import Occurrance from '../lib/svelteComponents/Occurrance.svelte'
-    import SavingFor from '../lib/svelteComponents/SavingFor.svelte'
-    import Database from '../lib/svelteComponents/testDatabase.svelte'
+    import Navbar from '$lib/svelteComponents/Navbar.svelte'
+    import Occurrance from '$lib/svelteComponents/Occurrance.svelte'
+    import SavingFor from '$lib/svelteComponents/SavingFor.svelte'
+    import Database from '$lib/svelteComponents/testDatabase.svelte'
     import 'normalize.css';
   </script>
   
