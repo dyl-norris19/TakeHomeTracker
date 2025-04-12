@@ -71,7 +71,7 @@
             <Moon class="h-5 w-5" />
           {/if}
         </Button>
-        <Button asChild>
+        <Button >
           <a href="/login">Login</a>
         </Button>
       </div>

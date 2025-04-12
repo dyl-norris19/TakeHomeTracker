@@ -2,6 +2,7 @@
     import Navbar from './lib/Navbar.svelte'
     import Occurrance from './lib/Occurrance.svelte'
     import SavingFor from './lib/SavingFor.svelte'
+    import Database from './lib/testDatabase.svelte'
     import 'normalize.css';
 </script>
   
@@ -29,6 +30,7 @@
             </div>
         </div>
     </div>
+    <Database/>
 </div>
 
 <style>

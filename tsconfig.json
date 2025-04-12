@@ -1,18 +1,23 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
       "$lib": ["./src/lib"],
       "$lib/*": ["./src/lib/*"]
-    }
-  }
-
-
+    },
+    "esModuleInterop": true,
+    "module": "esnext",        // ✅ or "es2020", "es2022"
+    "target": "esnext",        // also helpful
+    "moduleResolution": "bundler", // optional, helpful for Vite
+    "lib": ["esnext", "dom"],  // optional, recommended for Vite
+    "types": ["vite/client"]   // makes env vars available
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    ".svelte-kit",
+    ".vercel",
+    ".netlify"
+  ]
 }
-
-
