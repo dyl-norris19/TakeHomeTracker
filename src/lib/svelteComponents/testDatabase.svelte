@@ -4,7 +4,7 @@
 
     let users;
 
-    onMount(async () => {
-		  users = await getAll();
-	});
+    // onMount(async () => {
+	// 	  users = await getAll();
+	// });
 </script>
