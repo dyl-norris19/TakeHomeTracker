@@ -4,15 +4,24 @@
 
 </script>
 
-<Dialog.Root>
-    <Dialog.Trigger>Open</Dialog.Trigger>
-    <Dialog.Content>
-      <Dialog.Header>
-        <Dialog.Title>Are you sure absolutely sure?</Dialog.Title>
+<Dialog.Root open>
+    <Dialog.Trigger>
+      <Button>New Card +</Button>
+    </Dialog.Trigger>
+    <Dialog.Content class="h-[50vh]">
+      <Dialog.Header class="h-[5vh]">
+        <Dialog.Title class="sr-only">
+          hola
+        </Dialog.Title>
         <Dialog.Description>
           This action cannot be undone. This will permanently delete your account
           and remove your data from our servers.
         </Dialog.Description>
       </Dialog.Header>
+      <h2>HELLO?</h2>
+      
+    <Dialog.Footer>
+      meow
+    </Dialog.Footer>
     </Dialog.Content>
   </Dialog.Root>

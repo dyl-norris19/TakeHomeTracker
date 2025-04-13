@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.23.0",
+    "@lucide/svelte": "^0.487.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@tsconfig/svelte": "^5.0.4",
     "autoprefixer": "^10.4.20",
@@ -28,6 +29,9 @@
     "vite": "^6.2.0"
   },
   "dependencies": {
-    "normalize.css": "^8.0.1"
+    "@aws-sdk/client-dynamodb": "^3.788.0",
+    "@aws-sdk/lib-dynamodb": "^3.788.0",
+    "normalize.css": "^8.0.1",
+    "svelte-routing": "^2.13.0"
   }
 }
