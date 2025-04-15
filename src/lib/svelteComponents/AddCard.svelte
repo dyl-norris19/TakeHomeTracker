@@ -6,6 +6,8 @@
     import * as RadioGroup from "$lib/components/ui/radio-group/index.js";
     import * as Dialog from "$lib/components/ui/dialog/index";
 
+    import { uploadNewCard } from "$lib/database/database";
+
     let selectedMonthObj = $state<{value: string, label: string }>({value: "", label: ""});
     let selectedMonth = $derived(selectedMonthObj.value);
     let payAmount = $state<number>(null);
@@ -15,6 +17,8 @@
     let savingsType = $state<string>("");
     let saveByPercent = $derived(savingsType === "%");
     let savingsAmount = $state<number>(null);
+
+    let cardOpen = $state<boolean>(false);
     
     type Month = {
         value: string;
@@ -48,25 +52,28 @@
 
     function submitCard(): void {
         const formData = {
+            userid: "meow@gmail.com",
             month: selectedMonth,
-            payAmount,
-            rentAmount,
+            payAmount: Number(payAmount),
+            rentAmount: Number(rentAmount),
             otherBills: otherBillNames.map((name, i) => ({
                 name,
-                amount: otherBillAmounts[i]
+                amount: Number(otherBillAmounts[i])
             })),
             savings: {
                 method: saveByPercent,
-                amount: savingsAmount
+                amount: Number(savingsAmount)
             }
         };
 
-        console.log("Form Data: ", formData);
+        cardOpen = false;
+
+        uploadNewCard(formData);
     }
 
 </script>
 
-<Dialog.Root open>
+<Dialog.Root bind:open={cardOpen}>
     <Dialog.Trigger>
         <Button>New Card +</Button>
     </Dialog.Trigger>

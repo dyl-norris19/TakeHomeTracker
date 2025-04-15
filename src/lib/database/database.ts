@@ -1,13 +1,10 @@
 import { docClient } from "./dynamo"
-import { PutCommand, GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, GetCommand, ScanCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 
-async function bruh() {
+async function uploadNewCard(item) {
     const command = new PutCommand({
-        TableName: "users",
-        Item: {
-            email: "rawr@gmail.com",
-            name: "yamomma"
-        }
+        TableName: "cards",
+        Item: item
     })
 
     try {
@@ -18,9 +15,27 @@ async function bruh() {
     }
 }
 
-async function getAll() {
+async function getAllCardsByUser(userid: string) {
+    const command = new QueryCommand({
+        TableName: "cards",
+        KeyConditionExpression: "userid = :uid",
+        ExpressionAttributeValues: {
+            ":uid": userid
+        }
+    });
+
+    try {
+        const response = await docClient.send(command);
+        return response.Items;
+    } catch (error) {
+        console.error("Error querying items: ", error);
+        return [];
+    }
+}
+
+async function getAllCards() {
     const command = new ScanCommand({
-        TableName: "users"
+        TableName: "cards"
     })
 
     try {
@@ -32,4 +47,4 @@ async function getAll() {
     }
 }
 
-export { bruh, getAll };
+export { uploadNewCard, getAllCards, getAllCardsByUser };

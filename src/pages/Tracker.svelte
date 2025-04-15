@@ -4,7 +4,16 @@
     import SavingFor from '$lib/svelteComponents/SavingFor.svelte'
     import Database from '$lib/svelteComponents/testDatabase.svelte'
     import AddCard from '$lib/svelteComponents/AddCard.svelte'
+    import { getAllCardsByUser } from '$lib/database/database'
+    import { onMount } from 'svelte';
     import 'normalize.css';
+
+    let userCards = [];
+
+    onMount(async () => {
+        userCards = await getAllCardsByUser("meow@gmail.com");
+    })
+
   </script>
   
   <div>
@@ -24,13 +33,9 @@
                 <SavingFor />
             </div>
             <div class="flex-[2] occurrence-container space-y-4 overflow-y-auto max-h-[90vh]">
-                <Occurrance />
-                <Occurrance />
-                <Occurrance />
-                <Occurrance />
-                <Occurrance />
-                <Occurrance />
-                <Occurrance />
+                {#each userCards as card}
+                    <Occurrance {card} />
+                {/each}
             </div>
         </div>
     </div>

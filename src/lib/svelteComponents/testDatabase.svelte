@@ -1,10 +1,11 @@
 <script lang="ts">
-    import { getAll } from "$lib/database/database";
-    import { onMount } from 'svelte';
+    import { getAllCards, uploadNewCard } from "$lib/database/database";
+    import { onMount } from "svelte";
 
     let users;
 
     // onMount(async () => {
-	// 	  users = await getAll();
-	// });
+    //     // await uploadNewCard();
+    //     users = await getAllCards();
+    // });
 </script>
