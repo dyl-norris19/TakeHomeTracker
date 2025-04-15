@@ -72,12 +72,18 @@
 
             cardOpen = false;
 
+            selectedMonthObj = {value: "", label: ""};
+            payAmount = null;
+            rentAmount = null;
+            otherBillNames = []
+            otherBillAmounts = []
+            savingsType = ""
+            savingsAmount = null;
+
             await uploadNewCard(formData);
 
-            console.log("done");
-
             cardAdded();
-            
+
         } catch (err) {
             console.log("error: ", err);
         }
