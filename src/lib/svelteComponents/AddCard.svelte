@@ -7,7 +7,7 @@
     import * as Dialog from "$lib/components/ui/dialog/index";
 
     import { uploadNewCard } from "$lib/database/database";
-    import { createEventDispatcher } from 'svelte';
+    
 
     let selectedMonthObj = $state<{value: string, label: string }>({value: "", label: ""});
     let selectedMonth = $derived(selectedMonthObj.value);
@@ -21,7 +21,7 @@
 
     let cardOpen = $state<boolean>(false);
 
-    const dispatch = createEventDispatcher();
+    let { cardAdded } = $props();
     
     type Month = {
         value: string;
@@ -53,27 +53,34 @@
         otherBills.pop();
     }
 
-    function submitCard(): void {
-        const formData = {
-            userid: "meow@gmail.com",
-            month: selectedMonth,
-            payAmount: Number(payAmount),
-            rentAmount: Number(rentAmount),
-            otherBills: otherBillNames.map((name, i) => ({
-                name,
-                amount: Number(otherBillAmounts[i])
-            })),
-            savings: {
-                method: saveByPercent,
-                amount: Number(savingsAmount)
-            }
-        };
+    async function submitCard(): Promise<void> {
+        try {
+            const formData = {
+                userid: "meow@gmail.com",
+                month: selectedMonth,
+                payAmount: Number(payAmount),
+                rentAmount: Number(rentAmount),
+                otherBills: otherBillNames.map((name, i) => ({
+                    name,
+                    amount: Number(otherBillAmounts[i])
+                })),
+                savings: {
+                    method: saveByPercent,
+                    amount: Number(savingsAmount)
+                }
+            };
 
-        cardOpen = false;
+            cardOpen = false;
 
-        uploadNewCard(formData);
+            await uploadNewCard(formData);
 
-        dispatch('cardAdded');
+            console.log("done");
+
+            cardAdded();
+            
+        } catch (err) {
+            console.log("error: ", err);
+        }
     }
 
 </script>
