@@ -7,6 +7,7 @@
     import * as Dialog from "$lib/components/ui/dialog/index";
 
     import { uploadNewCard } from "$lib/database/database";
+    import { createEventDispatcher } from 'svelte';
 
     let selectedMonthObj = $state<{value: string, label: string }>({value: "", label: ""});
     let selectedMonth = $derived(selectedMonthObj.value);
@@ -19,6 +20,8 @@
     let savingsAmount = $state<number>(null);
 
     let cardOpen = $state<boolean>(false);
+
+    const dispatch = createEventDispatcher();
     
     type Month = {
         value: string;
@@ -69,6 +72,8 @@
         cardOpen = false;
 
         uploadNewCard(formData);
+
+        dispatch('cardAdded');
     }
 
 </script>
@@ -113,7 +118,7 @@
             </div>
             <h2 class="font-bold">Other Bills</h2>
             {#if otherBills.length > 0}
-            <Button class="w-[100px]"variant="destructive" on:click={deleteBillClick}>Delete Bill</Button>
+            <Button class="w-[100px]"variant="destructive" onclick={deleteBillClick}>Delete Bill</Button>
                 <div class="grid grid-cols-5 items-center gap-4">
                     {#each otherBills as bill, index (index)}
                         <Input placeholder="Bill Name" bind:value={otherBillNames[index]} class="col-span-2"/>
@@ -143,8 +148,8 @@
         </div>
         <Dialog.Footer>
             <div class="w-full flex justify-between">
-                <Button variant="secondary" on:click={addBillClick}>Add Bill</Button>
-                <Button on:click={submitCard}>Submit</Button>
+                <Button variant="secondary" onclick={addBillClick}>Add Bill</Button>
+                <Button onclick={submitCard}>Submit</Button>
             </div>
         </Dialog.Footer>
     </Dialog.Content>

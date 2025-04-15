@@ -14,6 +14,10 @@
         userCards = await getAllCardsByUser("meow@gmail.com");
     })
 
+    async function refreshCards() {
+        userCards = await getAllCardsByUser("meow@gmail.com");
+    }
+
   </script>
   
   <div>
@@ -21,15 +25,9 @@
     <div class="flex justify-center w-full mt-8">
         <div class="flex w-[65vw] justify-between space-x-8">
             <div class="flex-1 occurance-container">
-                <AddCard />
+                <AddCard on:cardAdded={refreshCards}/>
             </div>
             <div class="flex-1 occurrence-container space-y-14 overflow-y-auto max-h-[90vh]"> 
-                <SavingFor />
-                <SavingFor />
-                <SavingFor />
-                <SavingFor />
-                <SavingFor />
-                <SavingFor />
                 <SavingFor />
             </div>
             <div class="flex-[2] occurrence-container space-y-4 overflow-y-auto max-h-[90vh]">
