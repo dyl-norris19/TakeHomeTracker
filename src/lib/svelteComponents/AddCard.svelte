@@ -6,7 +6,8 @@
     import * as RadioGroup from "$lib/components/ui/radio-group/index.js";
     import * as Dialog from "$lib/components/ui/dialog/index";
 
-    let selectedMonth = $state<string>("");
+    let selectedMonthObj = $state<{value: string, label: string }>({value: "", label: ""});
+    let selectedMonth = $derived(selectedMonthObj.value);
     let payAmount = $state<number>(null);
     let rentAmount = $state<number>(null);
     let otherBillNames = $state<string[]>([]);
@@ -21,12 +22,21 @@
     };
 
     const months: Month[] = [
-        { value: "march", label: "March" },
-        { value: "april", label: "April" },
-        { value: "may", label: "May" },
+        { value: "January", label: "January" },
+        { value: "February", label: "February"},
+        { value: "March", label: "March" },
+        { value: "April", label: "April" },
+        { value: "May", label: "May" },
+        { value: "June", label: "June" },
+        { value: "July", label: "July" },
+        { value: "August", label: "August" },
+        { value: "September", label: "September" },
+        { value: "October", label: "October" },
+        { value: "November", label: "November" },
+        { value: "December", label: "December" },
     ];
 
-    let otherBills = $state<string[]>(["meow", "bruh", "grandma"])
+    let otherBills = $state<string[]>([])
 
     function addBillClick(): void {
         otherBills.push("");
@@ -69,7 +79,7 @@
             <h2 class="font-bold">Basics</h2>
             <div class="grid grid-cols-4 items-center gap-4">
                 <Label for="month" class="text-right">Month</Label>
-                <Select.Root on:change={(e) => selectedMonth = e.detail.value} portal={null}>
+                <Select.Root bind:selected={selectedMonthObj} portal={null}>
                     <Select.Trigger class="w-[180px]">
                         <Select.Value placeholder="Select a month" />
                     </Select.Trigger>
@@ -82,7 +92,7 @@
                             {/each}
                         </Select.Group>
                     </Select.Content>
-                    <Select.Input name="month" bind:value={selectedMonth} />
+                    <Select.Input name="month" />
                 </Select.Root>
             </div>
             <div class="grid grid-cols-4 items-center gap-4">
@@ -95,8 +105,8 @@
                 <Input id="reoccur" bind:value={rentAmount} class="col-span-3 w-[180px]" />
             </div>
             <h2 class="font-bold">Other Bills</h2>
-            <Button class="w-[100px]"variant="destructive" on:click={deleteBillClick}>Delete Bill</Button>
             {#if otherBills.length > 0}
+            <Button class="w-[100px]"variant="destructive" on:click={deleteBillClick}>Delete Bill</Button>
                 <div class="grid grid-cols-5 items-center gap-4">
                     {#each otherBills as bill, index (index)}
                         <Input placeholder="Bill Name" bind:value={otherBillNames[index]} class="col-span-2"/>
