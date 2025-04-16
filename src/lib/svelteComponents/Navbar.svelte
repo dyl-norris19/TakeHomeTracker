@@ -23,7 +23,7 @@
 <header class="w-full border-b shadow-sm dark:border-neutral-800">
     <div class="container mx-auto flex h-16 items-center justify-between px-4">
         <!-- Left: Menubar Navigation -->
-        <Menubar.Root>
+        <!-- <Menubar.Root>
             <Menubar.Menu>
                 <Menubar.Trigger>About</Menubar.Trigger>
                 <Menubar.Content>
@@ -57,13 +57,8 @@
                     </Menubar.Item>
                 </Menubar.Content>
             </Menubar.Menu>
-        </Menubar.Root>
-
-        <!-- Middle: Logo -->
-        <a href="/" class="text-xl font-semibold"> TakeHome Tracker </a>
-
-        <!-- Right: Theme Toggle & Login -->
-        <div class="flex items-center gap-2">
+        </Menubar.Root> -->
+        <div class="flex items-center gap-10">
             <Button
                 variant="outline"
                 size="icon"
@@ -76,6 +71,21 @@
                     <Moon class="h-5 w-5" />
                 {/if}
             </Button>
+
+            <a class="text-foreground hover:text-foreground transition-colors">
+                <Link to="login">
+                    About
+                </Link>
+            </a>
+        </div>
+
+        <!-- Middle: Logo -->
+        <a href="/" class="text-xl font-semibold">  
+            TakeHome Tracker
+        </a>
+
+        <!-- Right: Theme Toggle & Login -->
+        <div class="flex items-center gap-2">
             <slot/>
         </div>
     </div>
