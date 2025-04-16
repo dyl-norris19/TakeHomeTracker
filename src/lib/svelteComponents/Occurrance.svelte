@@ -3,7 +3,7 @@
 
     let { card }= $props();
 
-    console.log(card);
+    // console.log(card);
 
 </script>
 

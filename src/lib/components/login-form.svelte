@@ -18,12 +18,16 @@
         lastname: ""
     });
 
+    let userCookie: string = "";
+
     async function handleSubmit(): Promise<void> {
         try {
             const isValid: boolean = await authenticateUser(user);
 
             if (isValid) {
-                console.log("yippee!");
+                userCookie = user.email;
+                document.cookie = `email=${encodeURIComponent(userCookie)}; path=/; samsite=strict`;
+
                 changeCorner();
                 navigate("/tracker", {replace: true})
             } else

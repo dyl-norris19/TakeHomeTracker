@@ -7,6 +7,7 @@
     import * as Dialog from "$lib/components/ui/dialog/index";
 
     import { uploadNewCard } from "$lib/database/database";
+    import { onMount } from "svelte";
     
 
     let selectedMonthObj = $state<{value: string, label: string }>({value: "", label: ""});
@@ -21,7 +22,7 @@
 
     let cardOpen = $state<boolean>(false);
 
-    let { cardAdded } = $props();
+    let { cardAdded, email }: { cardAdded: any, email: string } = $props();
     
     type Month = {
         value: string;
@@ -45,6 +46,10 @@
 
     let otherBills = $state<string[]>([])
 
+    // onMount(() => {
+    //     console.log("bro... ", value);
+    // });
+
     function addBillClick(): void {
         otherBills.push("");
     }
@@ -53,10 +58,11 @@
         otherBills.pop();
     }
 
-    async function submitCard(): Promise<void> {
+    async function submitCard(email: string): Promise<void> {
         try {
+            console.log("submit card: ", email);
             const formData = {
-                userid: "meow@gmail.com",
+                userid: email,
                 month: selectedMonth,
                 payAmount: Number(payAmount),
                 rentAmount: Number(rentAmount),
@@ -162,7 +168,7 @@
         <Dialog.Footer>
             <div class="w-full flex justify-between">
                 <Button variant="secondary" onclick={addBillClick}>Add Bill</Button>
-                <Button onclick={submitCard}>Submit</Button>
+                <Button onclick={() => {submitCard(email)}}>Submit</Button>
             </div>
         </Dialog.Footer>
     </Dialog.Content>

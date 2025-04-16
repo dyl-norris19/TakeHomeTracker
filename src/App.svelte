@@ -23,7 +23,7 @@
 
 {#snippet bruh2()}
     <Button onclick={() => {toprightComponent = "login"}}>
-        <Link to="/">
+        <Link to="/" onclick={() => document.cookie = "email=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"}>
             Log out
         </Link>
     </Button>
