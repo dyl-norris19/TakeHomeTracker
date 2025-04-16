@@ -4,9 +4,12 @@
 	import { Input } from "$lib/components/ui/input/index.js";
 	import { Label } from "$lib/components/ui/label/index.js";
     import { onMount } from "svelte";
+    import { navigate } from "svelte-routing";
 
     import { authenticateUser } from "$lib/database/database";
     import type { User } from "$lib/database/database";
+
+    let { changeCorner } = $props();
 
     let user = $state<User>({
         email: "",
@@ -21,7 +24,8 @@
 
             if (isValid) {
                 console.log("yippee!");
-                window.location.href = '/'
+                changeCorner();
+                navigate("/tracker", {replace: true})
             } else
                 //send error
                 console.log("uh oh");

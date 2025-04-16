@@ -11,6 +11,7 @@
     import { Link } from 'svelte-routing';
 
     let userCards = [];
+    let { trCorner } = $props();
 
     onMount(async () => {
         // userCards = await getAllCardsByUser("meow@gmail.com");
@@ -21,32 +22,10 @@
         userCards = await getAllCardsByUser("meow@gmail.com");
     }
 
-    let { value = $bindable(), ...props } = $props();
-
 </script>
 
-{#snippet login()}
-    <Button>
-        <Link to="/login">Login</Link>
-    </Button>
-{/snippet}
-
 <div>
-    {#if value}
-        <Navbar>
-            <Button>
-                <Link to="/login">
-                    Login
-                </Link>
-            </Button>
-        </Navbar>
-    {:else}
-        <Navbar>
-            <Button>
-                Meow!
-            </Button>
-        </Navbar>
-    {/if}
+    {@render trCorner()}
     
     <div class="flex justify-center w-full mt-8">
         <div class="flex w-[65vw] justify-between space-x-8">
