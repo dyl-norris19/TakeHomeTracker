@@ -7,11 +7,13 @@
     import { getAllCardsByUser } from '$lib/database/database'
     import { onMount } from 'svelte';
     import 'normalize.css';
+    import { Button } from '$lib/components/ui/button/index';
+    import { Link } from 'svelte-routing';
 
     let userCards = [];
 
     onMount(async () => {
-        userCards = await getAllCardsByUser("meow@gmail.com");
+        // userCards = await getAllCardsByUser("meow@gmail.com");
     })
 
     async function refreshCards() {
@@ -19,10 +21,33 @@
         userCards = await getAllCardsByUser("meow@gmail.com");
     }
 
-  </script>
-  
-  <div>
-    <Navbar />
+    let { value = $bindable(), ...props } = $props();
+
+</script>
+
+{#snippet login()}
+    <Button>
+        <Link to="/login">Login</Link>
+    </Button>
+{/snippet}
+
+<div>
+    {#if value}
+        <Navbar>
+            <Button>
+                <Link to="/login">
+                    Login
+                </Link>
+            </Button>
+        </Navbar>
+    {:else}
+        <Navbar>
+            <Button>
+                Meow!
+            </Button>
+        </Navbar>
+    {/if}
+    
     <div class="flex justify-center w-full mt-8">
         <div class="flex w-[65vw] justify-between space-x-8">
             <div class="flex-1 occurance-container">
@@ -38,16 +63,16 @@
             </div>
         </div>
     </div>
-    <Database/>
-  </div>
-  
-  <style>
+    <!-- <Database/> -->
+</div>
+
+<style>
     .occurrence-container::-webkit-scrollbar {
         width: 0px;
         background: transparent;
     }
-  
+
     .occurrence-container {
         scrollbar-width: none;
     }
-  </style>
+</style>

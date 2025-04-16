@@ -5,7 +5,8 @@
     import { onMount } from "svelte";
     import { Link } from "svelte-routing";
 
-    let theme = "light";
+    let theme = $state("light");
+    // let { login } = $props();
 
     function toggleTheme() {
         theme = theme === "light" ? "dark" : "light";
@@ -75,9 +76,7 @@
                     <Moon class="h-5 w-5" />
                 {/if}
             </Button>
-            <Button>
-                <Link to="/login">Login</Link>
-            </Button>
+            <slot/>
         </div>
     </div>
 </header>
