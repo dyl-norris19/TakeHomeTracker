@@ -39,9 +39,9 @@
             <div class="flex-1 occurance-container">
                 <AddCard cardAdded={() => refreshCards(email)} {email}/>
             </div>
-            <div class="flex-1 occurrence-container space-y-14 overflow-y-auto max-h-[90vh]"> 
+            <!-- <div class="flex-1 occurrence-container space-y-14 overflow-y-auto max-h-[90vh]"> 
                 <SavingFor />
-            </div>
+            </div> -->
             <div class="flex-[2] occurrence-container space-y-4 overflow-y-auto max-h-[90vh]">
                 {#each userCards as card}
                     <Occurrance {card} />
