@@ -14,6 +14,11 @@
     let { trCorner } = $props();
     let email = $state<string>();
 
+    const monthOrder: string[] = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
     onMount(async () => {
         email = getCookie('email');
         refreshCards(email);
@@ -22,6 +27,9 @@
     async function refreshCards(email: string): Promise<void> {
         console.log("running: ", email);
         userCards = await getAllCardsByUser(email);
+        userCards.sort((a, b) => {
+            return monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month)
+        });
     }
     
     function getCookie(name: string): string {
