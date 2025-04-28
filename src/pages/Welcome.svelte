@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Button } from '$lib/components/ui/button/index';
-    import yahoo from '../assets/yahoo.jpg'
+    import money from '../assets/moneytalks.jpg'
 
     let { trCorner } = $props();
 
@@ -17,8 +17,8 @@
     <!-- Image + Text -->
     <div class="flex flex-col md:flex-row gap-[7vw]">
       <!-- Image on the left -->
-      <div class="w-250 h-250 pr-[5vw] flex-shrink-0">
-        <img src={yahoo} alt="Money Mascot" class="w-full h-full object-contain" />
+      <div>
+        <img src={money} alt="Money Mascot" class="w-[30vw] h-[30vh] object-contain" />
       </div>
   
       <!-- Text on the right -->
