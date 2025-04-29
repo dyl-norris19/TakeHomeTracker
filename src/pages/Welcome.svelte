@@ -1,6 +1,7 @@
 <script lang="ts">
     import { Button } from '$lib/components/ui/button/index';
-    import money from '../assets/moneytalks.jpg'
+    import moneyLight from '../assets/moneytalksLight.jpg';
+    import moneyDark from '../assets/moneytalksDark.png';
 
     let { trCorner } = $props();
 
@@ -17,9 +18,22 @@
     <!-- Image + Text -->
     <div class="flex flex-col md:flex-row gap-[7vw]">
       <!-- Image on the left -->
-      <div>
-        <img src={money} alt="Money Mascot" class="w-[30vw] h-[30vh] object-contain" />
-      </div>
+      <!-- Image on the left -->
+    <div>
+        <!-- Light mode image -->
+        <img
+        src={moneyLight}
+        alt="Money Mascot Light"
+        class="w-[30vw] h-[30vh] object-contain block dark:hidden"
+        />
+    
+        <!-- Dark mode image -->
+        <img
+        src={moneyDark}
+        alt="Money Mascot Dark"
+        class="w-[30vw] h-[30vh] object-contain hidden dark:block"
+        />
+    </div>
   
       <!-- Text on the right -->
       <p class="text-3xl text-center md:text-left max-w-md">

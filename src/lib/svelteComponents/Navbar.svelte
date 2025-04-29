@@ -72,11 +72,11 @@
                 {/if}
             </Button>
 
-            <a class="text-foreground hover:text-foreground transition-colors">
+            <!-- <a class="text-foreground hover:text-foreground transition-colors">
                 <Link to="login">
                     About
                 </Link>
-            </a>
+            </a> -->
         </div>
 
         <!-- Middle: Logo -->
