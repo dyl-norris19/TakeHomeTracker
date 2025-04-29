@@ -28,6 +28,25 @@ async function updateReoccuringBills(bills: any): Promise<void> {
     }
 }
 
+async function updatePaydate(paydate: any): Promise<void> {
+    const command = new UpdateCommand({
+        TableName: "reoccuringbills",
+        Key: { email: paydate.email },
+        UpdateExpression: "SET paydate = :paydate, frequency = :frequency",
+        ExpressionAttributeValues: {
+            ":paydate": paydate.timestamp,
+            ":frequency": paydate.frequency
+        }
+    });
+
+    try {
+        await docClient.send(command);
+        console.log("Updated");
+    } catch(err) {
+        console.error("Error: ", err);
+    }
+}
+
 async function getReoccuringBills(email: string): Promise<any> {
     const command = new QueryCommand({
         TableName: "reoccuringbills",
@@ -143,6 +162,7 @@ export { uploadNewCard,
     authenticateUser,
     signupUser,
     getReoccuringBills,
-    updateReoccuringBills
+    updateReoccuringBills,
+    updatePaydate
 };
 export type { User };

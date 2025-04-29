@@ -5,6 +5,7 @@
     import Database from '$lib/svelteComponents/testDatabase.svelte'
     import AddCard from '$lib/svelteComponents/AddCard.svelte'
     import NewRecBill from '$lib/svelteComponents/NewRecBill.svelte';
+    import Paydate from '$lib/svelteComponents/Paydate.svelte';
     import { getAllCardsByUser } from '$lib/database/database'
     import { onMount } from 'svelte';
     import 'normalize.css';
@@ -49,10 +50,11 @@
             <div class="flex flex-col items-start flex-1 occurance-container space-y-8">
                 <AddCard cardAdded={() => refreshCards(email)} {email}/>
                 <NewRecBill {email}/>
+                <Paydate {email}/>
             </div>
-            <div class="flex-1 occurrence-container space-y-14 overflow-y-auto max-h-[90vh]"> 
+            <!-- <div class="flex-1 occurrence-container space-y-14 overflow-y-auto max-h-[90vh]"> 
                 <SavingFor />
-            </div>
+            </div> -->
             <div class="flex-[2] occurrence-container space-y-4 overflow-y-auto max-h-[90vh]">
                 {#each userCards as card}
                     <Occurrance {card} />
