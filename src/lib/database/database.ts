@@ -10,6 +10,23 @@ type User = {
     lastname: string
 }
 
+async function getReoccuringBills(email: string): Promise<any> {
+    const command = new QueryCommand({
+        TableName: "reoccuringbills",
+        KeyConditionExpression: "email = :email",
+        ExpressionAttributeValues: {
+            ":email": email
+        }
+    })
+
+    try {
+        const response = await docClient.send(command);
+        return response.Items[0]?.bills;
+    } catch (err) {
+        console.error("Error: ", err);
+    }
+}
+
 async function uploadNewCard(item: any): Promise<void> {
     const command: PutCommand = new PutCommand({
         TableName: "cards",
@@ -106,6 +123,7 @@ export { uploadNewCard,
     getAllCards,
     getAllCardsByUser,
     authenticateUser,
-    signupUser
+    signupUser,
+    getReoccuringBills
 };
 export type { User };

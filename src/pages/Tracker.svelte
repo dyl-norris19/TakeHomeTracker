@@ -13,6 +13,7 @@
     let userCards = $state<any[]>([]);
     let { trCorner } = $props();
     let email = $state<string>();
+    let reoccuringBills = $state<string[]>([]);
 
     const monthOrder: string[] = [
         "January", "February", "March", "April", "May", "June",
@@ -46,6 +47,7 @@
         <div class="flex w-[65vw] justify-between space-x-8">
             <div class="flex-1 occurance-container">
                 <AddCard cardAdded={() => refreshCards(email)} {email}/>
+                
             </div>
             <!-- <div class="flex-1 occurrence-container space-y-14 overflow-y-auto max-h-[90vh]"> 
                 <SavingFor />

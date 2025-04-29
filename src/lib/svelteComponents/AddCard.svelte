@@ -6,14 +6,13 @@
     import * as RadioGroup from "$lib/components/ui/radio-group/index.js";
     import * as Dialog from "$lib/components/ui/dialog/index";
 
-    import { uploadNewCard } from "$lib/database/database";
+    import { uploadNewCard, getReoccuringBills } from "$lib/database/database";
     import { onMount } from "svelte";
     
 
     let selectedMonthObj = $state<{value: string, label: string }>({value: "", label: ""});
     let selectedMonth = $derived(selectedMonthObj.value);
     let payAmount = $state<number>(null);
-    let rentAmount = $state<number>(null);
     let otherBillNames = $state<string[]>([]);
     let otherBillAmounts = $state<number[]>([]);
     let savingsType = $state<string>("");
@@ -44,11 +43,21 @@
         { value: "December", label: "December" },
     ];
 
-    let otherBills = $state<string[]>([])
+    let reoccurBills = $state<any[]>([]);
+    let otherBills = $state<string[]>([]);
 
     // onMount(() => {
-    //     console.log("bro... ", value);
+    //     getReoccuringBills(email);
     // });
+
+    async function handleClick(): Promise<void> {
+        try {
+            reoccurBills = await getReoccuringBills(email);
+            // console.log("reoccurBills set: ", reoccurBills[0].name, reoccurBills[0].amount);
+        } catch (err) {
+            console.log("Error: ", err);
+        }
+    }
 
     function addBillClick(): void {
         otherBills.push("");
@@ -65,7 +74,10 @@
                 userid: email,
                 month: selectedMonth,
                 payAmount: Number(payAmount),
-                rentAmount: Number(rentAmount),
+                reoccurBills: reoccurBills.map(bill => ({
+                    name: bill.name,
+                    amount: Number(bill.amount)
+                })),
                 otherBills: otherBillNames.map((name, i) => ({
                     name,
                     amount: Number(otherBillAmounts[i])
@@ -80,7 +92,6 @@
 
             selectedMonthObj = {value: "", label: ""};
             payAmount = null;
-            rentAmount = null;
             otherBillNames = []
             otherBillAmounts = []
             savingsType = ""
@@ -98,7 +109,7 @@
 </script>
 
 <Dialog.Root bind:open={cardOpen}>
-    <Dialog.Trigger>
+    <Dialog.Trigger onclick={handleClick}>
         <Button>New Card +</Button>
     </Dialog.Trigger>
     <Dialog.Content>
@@ -132,8 +143,10 @@
             </div>
             <h2 class="font-bold">Reoccuring Bills</h2>
             <div class="grid grid-cols-4 items-center gap-4">
-                <Label for="reoccur" class="text-right">Rent</Label>
-                <Input id="reoccur" bind:value={rentAmount} class="col-span-3 w-[180px]" />
+                {#each reoccurBills as bill, index (index)}
+                    <Label for="reoccur" class="text-right">{reoccurBills[index].name}</Label>
+                    <Input id="reoccur" class="col-span-3 w-[180px]" bind:value={reoccurBills[index].amount} />
+                {/each}
             </div>
             <h2 class="font-bold">Other Bills</h2>
             {#if otherBills.length > 0}
