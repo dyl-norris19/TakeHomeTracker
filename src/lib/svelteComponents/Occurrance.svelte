@@ -19,6 +19,26 @@
         return card.payAmount - reoccurBillsTotal - otherBillsTotal - savings;
     }
 
+    function secondsToDate(): string {
+        const date = new Date(card.payDate * 1000);
+
+        const day = date.getDate();
+        const year = date.getFullYear();
+        const month = date.toLocaleString("default", { month: "long" });
+
+        const getOrdinalSuffix = (n: number): string => {
+            if (n >= 11 && n <= 13) return "th";
+            switch (n % 10) {
+                case 1: return "st";
+                case 2: return "nd";
+                case 3: return "rd";
+                default: return "th";
+            }
+        };
+
+        return `${month} ${day}${getOrdinalSuffix(day)}, ${year}`;
+    }
+
 </script>
 
 <div>
@@ -28,7 +48,7 @@
                 <p>{card.month}</p>
                 <p>Pay: ${card.payAmount}</p>
             </Card.Title>
-            <Card.Description>Payday: March 4th</Card.Description>
+            <Card.Description>{secondsToDate()}</Card.Description>
         </Card.Header>
         <Card.Content>
             {#each card.reoccurBills as bill}

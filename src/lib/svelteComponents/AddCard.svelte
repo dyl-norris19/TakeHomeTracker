@@ -18,6 +18,7 @@
     let savingsType = $state<string>("");
     let saveByPercent = $derived(savingsType === "%");
     let savingsAmount = $state<number>(null);
+    let paydate = $state<Date>(null);
 
     let cardOpen = $state<boolean>(false);
 
@@ -43,7 +44,8 @@
         { value: "December", label: "December" },
     ];
 
-    let reoccurBills = $state<any[]>([]);
+    let reoccur = $state<any>();
+    let reoccurBills = $state<any[]>();
     let otherBills = $state<string[]>([]);
 
     // onMount(() => {
@@ -52,7 +54,8 @@
 
     async function handleClick(): Promise<void> {
         try {
-            reoccurBills = await getReoccuringBills(email);
+            reoccur = await getReoccuringBills(email)
+            reoccurBills = reoccur.bills;
             // console.log("reoccurBills set: ", reoccurBills[0].name, reoccurBills[0].amount);
         } catch (err) {
             console.log("Error: ", err);
@@ -69,9 +72,46 @@
         otherBillAmounts.pop();
     }
 
+    function getNextPaydate(): number {
+        const originalDate = new Date(reoccur.paydate * 1000);
+        const today = new Date();
+
+        if (reoccur.frequency == 1) {
+            let year = originalDate.getFullYear();
+            let month = originalDate.getMonth();
+            const day = originalDate.getDate();
+
+            while (true) {
+                const nextDate = new Date(year, month, day);
+                if (nextDate > today) {
+                    return Math.floor(nextDate.getTime() / 1000);
+                }
+                month++;
+                if (month > 11) {
+                    month = 0;
+                    year++;
+                }
+            }
+        }
+
+        // Biweekly and Weekly: fixed intervals
+        const intervalDays = reoccur.frequency == 2 ? 14: 7;
+        const intervalMs = intervalDays * 24 * 60 * 60 * 1000;
+
+        let nextDate = new Date(originalDate.getTime());
+
+        while (nextDate <= today) {
+            nextDate = new Date(nextDate.getTime() + intervalMs);
+        }
+
+        return Math.floor(nextDate.getTime() / 1000);
+    }
+
     async function submitCard(email: string): Promise<void> {
         try {
-            console.log("submit card: ", email);
+            const nextPaydate = getNextPaydate();
+
+
             const formData = {
                 userid: email,
                 month: selectedMonth,
@@ -87,7 +127,8 @@
                 savings: {
                     method: saveByPercent,
                     amount: Number(savingsAmount)
-                }
+                },
+                payDate: nextPaydate
             };
 
             cardOpen = false;
@@ -100,7 +141,7 @@
             savingsAmount = null;
 
             await uploadNewCard(formData);
-
+            // console.log(formData);
             cardAdded();
 
         } catch (err) {

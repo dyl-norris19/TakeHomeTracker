@@ -30,7 +30,7 @@
     let popoverOpen = $state<boolean>(false);
 
     function handleClick() {
-        popoverOpen = false;
+        // popoverOpen = false;
     }
 
     async function handleSubmit(email: string) {

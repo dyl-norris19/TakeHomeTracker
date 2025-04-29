@@ -58,7 +58,8 @@ async function getReoccuringBills(email: string): Promise<any> {
 
     try {
         const response = await docClient.send(command);
-        return response.Items[0]?.bills;
+
+        return response.Items[0];
     } catch (err) {
         console.error("Error: ", err);
     }
