@@ -65,6 +65,8 @@
 
     function deleteBillClick(): void {
         otherBills.pop();
+        otherBillNames.pop();
+        otherBillAmounts.pop();
     }
 
     async function submitCard(email: string): Promise<void> {

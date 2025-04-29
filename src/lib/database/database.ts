@@ -1,5 +1,5 @@
 import { docClient } from "./dynamo"
-import { PutCommand, GetCommand, ScanCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, GetCommand, ScanCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 
 import bcrypt from 'bcryptjs';
 
@@ -8,6 +8,24 @@ type User = {
     password: string,
     firstname: string,
     lastname: string
+}
+
+async function updateReoccuringBills(bills: any): Promise<void> {
+    const command = new UpdateCommand({
+        TableName: "reoccuringbills",
+        Key: { email: bills.email},
+        UpdateExpression: "SET bills = :newBills",
+        ExpressionAttributeValues: {
+            ":newBills": bills.bills
+        }
+    });
+
+    try {
+        await docClient.send(command);
+        console.log("Yay i did it!");
+    } catch(err) {
+        console.log("Error: ", err);
+    }
 }
 
 async function getReoccuringBills(email: string): Promise<any> {
@@ -124,6 +142,7 @@ export { uploadNewCard,
     getAllCardsByUser,
     authenticateUser,
     signupUser,
-    getReoccuringBills
+    getReoccuringBills,
+    updateReoccuringBills
 };
 export type { User };
