@@ -6,6 +6,7 @@
 
     import { getReoccuringBills, updateReoccuringBills } from "$lib/database/database";
 
+    let reoccur = $state<any>();
     let reoccurBills = $state<any[]>([]);
     let cardOpen = $state<boolean>(false);
 
@@ -13,7 +14,8 @@
 
     async function handleClick() {
         try {
-            reoccurBills = await getReoccuringBills(email);
+            reoccur = await getReoccuringBills(email);
+            reoccurBills = reoccur.bills;
         } catch (err) {
             console.error("Error: ", err);
         }

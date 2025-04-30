@@ -2,7 +2,6 @@
     import Navbar from '$lib/svelteComponents/Navbar.svelte'
     import Occurrance from '$lib/svelteComponents/Occurrance.svelte'
     import SavingFor from '$lib/svelteComponents/SavingFor.svelte'
-    import Database from '$lib/svelteComponents/testDatabase.svelte'
     import AddCard from '$lib/svelteComponents/AddCard.svelte'
     import NewRecBill from '$lib/svelteComponents/NewRecBill.svelte';
     import Paydate from '$lib/svelteComponents/Paydate.svelte';
