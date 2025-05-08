@@ -106,8 +106,12 @@ async function authenticateUser(user: User): Promise<boolean> {
             }
         );
 
-        console.log(response.data);
-        return response.data;
+        console.log(response.data.body);
+
+        const parsedBody = JSON.parse(response.data.body);
+        console.log(parsedBody);
+        
+        return parsedBody.authenticated;
     } catch (err) {
         console.error("Error: ", err);
         return false;
