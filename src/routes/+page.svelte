@@ -3,11 +3,9 @@
     import moneyLight from '../assets/moneytalksLight.jpg';
     import moneyDark from '../assets/moneytalksDark.png';
 
-    let { trCorner } = $props();
 
 </script>
 
-{@render trCorner()}
 
 <h1 class="text-4xl md:text-5xl font-light text-left pl-[20vw] mt-12 mb-8">
     Take Control of Your Finances!

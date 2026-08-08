@@ -12,7 +12,6 @@
     import { Link } from 'svelte-routing';
 
     let userCards = $state<any[]>([]);
-    let { trCorner } = $props();
     let email = $state<string>();
     let reoccuringBills = $state<string[]>([]);
 
@@ -42,7 +41,6 @@
 </script>
 
 <div>
-    {@render trCorner()}
     
     <div class="flex justify-center w-full mt-8">
         <div class="flex w-[65vw] justify-between space-x-8">
