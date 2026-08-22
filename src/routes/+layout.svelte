@@ -3,18 +3,21 @@
     import favicon from '$lib/assets/favicon.svg';
     import Navbar from '$lib/svelteComponents/Navbar.svelte';
     import { Button } from '$lib/components/ui/button/index';
-    import { getTopRight } from '$lib/state/nav.svelte';
+    import type { LayoutData } from './$types';
 
-    let { children } = $props();
+    let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 </script>
 
-{#snippet bruh1()}
+{#snippet loggedOutCorner()}
     <Button href="/login">
         Login
     </Button>
 {/snippet}
 
-{#snippet bruh2()}
+{#snippet loggedInCorner()}
+    <Button href="/tracker" variant="outline">
+        Tracker
+    </Button>
     <form method="POST" action="/logout">
         <Button type="submit">
             Log out
@@ -22,25 +25,13 @@
     </form>
 {/snippet}
 
-{#snippet bruh3()}
-    <Button>
-        (idk what this needs to be)
-    </Button>
-{/snippet}
-
-{#snippet trCorner()}
-    {#if getTopRight() === "login"}
-        <Navbar>{@render bruh1()}</Navbar>
-    {:else if getTopRight() === "logged"}
-        <Navbar>{@render bruh2()}</Navbar>
-    {:else if getTopRight() === "logging"}
-        <Navbar>{@render bruh3()}</Navbar>
-    {:else}
-        <Navbar>{@render bruh1()}</Navbar>
-    {/if}
-{/snippet}
-
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
-{@render trCorner()}
+<Navbar>
+    {#if data.user}
+        {@render loggedInCorner()}
+    {:else}
+        {@render loggedOutCorner()}
+    {/if}
+</Navbar>
 {@render children()}

@@ -3,25 +3,13 @@
 	import * as Card from "$lib/components/ui/card/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 	import { Label } from "$lib/components/ui/label/index.js";
-	import { enhance, applyAction } from "$app/forms";
-	import type { ActionResult } from "@sveltejs/kit";
+	import { enhance } from "$app/forms";
 
 	let {
-		changeCorner,
 		form
 	}: {
-		changeCorner: () => void;
 		form?: { error?: string; email?: string } | null;
 	} = $props();
-
-	function handleResult() {
-		return async ({ result }: { result: ActionResult }) => {
-			if (result.type === "redirect") {
-				changeCorner();
-			}
-			await applyAction(result);
-		};
-	}
 </script>
 
 <Card.Root class="mx-auto max-w-sm">
@@ -30,7 +18,7 @@
 		<Card.Description>Enter your email below to login to your account</Card.Description>
 	</Card.Header>
 	<Card.Content>
-		<form method="POST" use:enhance={handleResult}>
+		<form method="POST" use:enhance>
 			<div class="grid gap-4">
 				{#if form?.error}
 					<p class="text-sm text-red-500">{form.error}</p>
