@@ -15,12 +15,11 @@
 {/snippet}
 
 {#snippet bruh2()}
-    <Button
-        href="/"
-        onclick={() => document.cookie = "email=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;"}
-    >
-        Log out
-    </Button>
+    <form method="POST" action="/logout">
+        <Button type="submit">
+            Log out
+        </Button>
+    </form>
 {/snippet}
 
 {#snippet bruh3()}

@@ -3,41 +3,25 @@
 	import * as Card from "$lib/components/ui/card/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 	import { Label } from "$lib/components/ui/label/index.js";
-    import { onMount } from "svelte";
-    import { goto } from "$app/navigation";
+	import { enhance, applyAction } from "$app/forms";
+	import type { ActionResult } from "@sveltejs/kit";
 
-    import { authenticateUser } from "$lib/database/database";
-    import type { User } from "$lib/database/database";
+	let {
+		changeCorner,
+		form
+	}: {
+		changeCorner: () => void;
+		form?: { error?: string; email?: string } | null;
+	} = $props();
 
-    let { changeCorner } = $props();
-
-    let user = $state<User>({
-        email: "",
-        password: "",
-        firstname: "",
-        lastname: ""
-    });
-
-    let userCookie: string = "";
-
-    async function handleSubmit(): Promise<void> {
-        try {
-            const isValid: boolean = await authenticateUser(user);
-
-            if (isValid) {
-                userCookie = user.email;
-                document.cookie = `email=${encodeURIComponent(userCookie)}; path=/; samsite=strict`;
-
-                changeCorner();
-                goto("/tracker");
-            } else
-                //send error
-                console.log("uh oh");
-        } catch (err) {
-            console.log("Error: ", err);
-        }
-    }
-
+	function handleResult() {
+		return async ({ result }: { result: ActionResult }) => {
+			if (result.type === "redirect") {
+				changeCorner();
+			}
+			await applyAction(result);
+		};
+	}
 </script>
 
 <Card.Root class="mx-auto max-w-sm">
@@ -46,22 +30,27 @@
 		<Card.Description>Enter your email below to login to your account</Card.Description>
 	</Card.Header>
 	<Card.Content>
-		<div class="grid gap-4">
-			<div class="grid gap-2">
-				<Label for="email">Email</Label>
-				<Input id="email" bind:value={user.email} type="email" placeholder="m@example.com" required />
-			</div>
-			<div class="grid gap-2">
-				<div class="flex items-center">
-					<Label for="password">Password</Label>
-					<a href="##" class="ml-auto inline-block text-sm underline">
-						Forgot your password?
-					</a>
+		<form method="POST" use:enhance={handleResult}>
+			<div class="grid gap-4">
+				{#if form?.error}
+					<p class="text-sm text-red-500">{form.error}</p>
+				{/if}
+				<div class="grid gap-2">
+					<Label for="email">Email</Label>
+					<Input id="email" name="email" type="email" placeholder="m@example.com" value={form?.email ?? ""} required />
 				</div>
-				<Input id="password" bind:value={user.password} type="password" required />
+				<div class="grid gap-2">
+					<div class="flex items-center">
+						<Label for="password">Password</Label>
+						<a href="##" class="ml-auto inline-block text-sm underline">
+							Forgot your password?
+						</a>
+					</div>
+					<Input id="password" name="password" type="password" required />
+				</div>
+				<Button type="submit" class="w-full">Login</Button>
 			</div>
-			<Button type="submit" class="w-full" onclick={handleSubmit}>Login</Button>
-		</div>
+		</form>
 		<div class="mt-4 text-center text-sm">
 			Don't have an account?
 			<a href="/signup" class="underline"> Sign up </a>

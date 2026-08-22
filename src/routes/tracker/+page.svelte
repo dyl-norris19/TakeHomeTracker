@@ -9,9 +9,12 @@
     import { onMount } from 'svelte';
     import 'normalize.css';
     import { Button } from '$lib/components/ui/button/index';
+    import type { PageData } from './$types';
+
+    let { data }: { data: PageData } = $props();
 
     let userCards = $state<any[]>([]);
-    let email = $state<string | null>(null);
+    let email = $derived(data.email);
     let reoccuringBills = $state<string[]>([]);
 
     const monthOrder: string[] = [
@@ -20,7 +23,6 @@
     ];
 
     onMount(async () => {
-        email = getCookie('email');
         if (email) {
             refreshCards(email);
         }
@@ -33,12 +35,6 @@
             return monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month)
         });
     }
-    
-    function getCookie(name: string): string | null {
-        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-        return match ? decodeURIComponent(match[2]) : null;
-    }
-
 </script>
 
 <div>
