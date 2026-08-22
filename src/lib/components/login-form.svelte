@@ -4,7 +4,7 @@
 	import { Input } from "$lib/components/ui/input/index.js";
 	import { Label } from "$lib/components/ui/label/index.js";
     import { onMount } from "svelte";
-    import { navigate } from "svelte-routing";
+    import { goto } from "$app/navigation";
 
     import { authenticateUser } from "$lib/database/database";
     import type { User } from "$lib/database/database";
@@ -29,7 +29,7 @@
                 document.cookie = `email=${encodeURIComponent(userCookie)}; path=/; samsite=strict`;
 
                 changeCorner();
-                navigate("/tracker", {replace: true})
+                goto("/tracker");
             } else
                 //send error
                 console.log("uh oh");

@@ -1,6 +1,16 @@
 {
-	"/": [],
-	"/login": [],
-	"/signup": [],
-	"/tracker": []
+	"/": [
+		"src/routes/+layout.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/login": [
+		"src/routes/+layout.server.ts"
+	],
+	"/signup": [
+		"src/routes/signup/+page.server.ts",
+		"src/routes/+layout.server.ts"
+	],
+	"/tracker": [
+		"src/routes/+layout.server.ts"
+	]
 }

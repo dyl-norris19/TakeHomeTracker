@@ -12,13 +12,13 @@
 
     let selectedMonthObj = $state<{value: string, label: string }>({value: "", label: ""});
     let selectedMonth = $derived(selectedMonthObj.value);
-    let payAmount = $state<number>(null);
+    let payAmount = $state<number | null>(null);
     let otherBillNames = $state<string[]>([]);
     let otherBillAmounts = $state<number[]>([]);
     let savingsType = $state<string>("");
     let saveByPercent = $derived(savingsType === "%");
-    let savingsAmount = $state<number>(null);
-    let paydate = $state<Date>(null);
+    let savingsAmount = $state<number | null>(null);
+    let paydate = $state<Date | null>(null);
 
     let cardOpen = $state<boolean>(false);
 
@@ -45,7 +45,7 @@
     ];
 
     let reoccur = $state<any>();
-    let reoccurBills = $state<any[]>();
+    let reoccurBills = $state<any[]>([]);
     let otherBills = $state<string[]>([]);
 
     // onMount(() => {

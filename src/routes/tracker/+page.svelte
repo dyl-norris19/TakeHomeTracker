@@ -9,10 +9,9 @@
     import { onMount } from 'svelte';
     import 'normalize.css';
     import { Button } from '$lib/components/ui/button/index';
-    import { Link } from 'svelte-routing';
 
     let userCards = $state<any[]>([]);
-    let email = $state<string>();
+    let email = $state<string | null>(null);
     let reoccuringBills = $state<string[]>([]);
 
     const monthOrder: string[] = [
@@ -22,7 +21,9 @@
 
     onMount(async () => {
         email = getCookie('email');
-        refreshCards(email);
+        if (email) {
+            refreshCards(email);
+        }
     })
 
     async function refreshCards(email: string): Promise<void> {
@@ -33,7 +34,7 @@
         });
     }
     
-    function getCookie(name: string): string {
+    function getCookie(name: string): string | null {
         const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
         return match ? decodeURIComponent(match[2]) : null;
     }
@@ -45,9 +46,11 @@
     <div class="flex justify-center w-full mt-8">
         <div class="flex w-[65vw] justify-between space-x-8">
             <div class="flex flex-col items-start flex-1 occurance-container space-y-8">
-                <AddCard cardAdded={() => refreshCards(email)} {email}/>
-                <NewRecBill {email}/>
-                <Paydate {email}/>
+                {#if email}
+                    <AddCard cardAdded={() => refreshCards(email!)} email={email} />
+                    <NewRecBill {email} />
+                    <Paydate {email} />
+                {/if}
             </div>
             <!-- <div class="flex-1 occurrence-container space-y-14 overflow-y-auto max-h-[90vh]"> 
                 <SavingFor />

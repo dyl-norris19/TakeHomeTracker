@@ -18,7 +18,7 @@
     async function handleSubmit(): Promise<void> {
         try {
             console.log(user);
-            
+
             await signupUser(user);
             window.location.href = '/login';
         } catch (err) {

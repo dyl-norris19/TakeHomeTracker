@@ -35,7 +35,10 @@
 
     async function handleSubmit(email: string) {
         const jsDate = value?.toDate(getLocalTimeZone());
-        const timestamp = jsDate?.getTime()/1000;
+
+        if (!jsDate) return;
+        
+        const timestamp = jsDate.getTime() / 1000;
         
         try {
             const formData = {

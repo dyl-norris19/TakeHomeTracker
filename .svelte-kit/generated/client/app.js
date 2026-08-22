@@ -17,12 +17,12 @@ export const nodes = [
 	() => import('./nodes/5')
 ];
 
-export const server_loads = [];
+export const server_loads = [0];
 
 export const dictionary = {
 		"/": [2],
 		"/login": [3],
-		"/signup": [4],
+		"/signup": [~4],
 		"/tracker": [5]
 	};
 
