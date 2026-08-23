@@ -1,6 +1,6 @@
 <script lang="ts">
     import './layout.css';
-    import favicon from '$lib/assets/favicon.svg';
+    import yahoo from '../assets/yahoo.jpg';
     import Navbar from '$lib/svelteComponents/Navbar.svelte';
     import { Button } from '$lib/components/ui/button/index';
     import type { LayoutData } from './$types';
@@ -25,7 +25,7 @@
     </form>
 {/snippet}
 
-<svelte:head><link rel="icon" href={favicon} /></svelte:head>
+<svelte:head><link rel="icon" href={yahoo} /></svelte:head>
 
 <Navbar>
     {#if data.user}
