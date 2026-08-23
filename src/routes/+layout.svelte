@@ -1,6 +1,6 @@
 <script lang="ts">
     import './layout.css';
-    import yahoo from '../assets/yahoo.jpg';
+    import yahoo from '$lib/assets/yahoo.jpg';
     import Navbar from '$lib/components/Navbar.svelte';
     import { Button } from '$lib/components/ui/button/index';
     import type { LayoutData } from './$types';
