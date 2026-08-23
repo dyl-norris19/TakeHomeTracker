@@ -1,10 +1,10 @@
 <script lang="ts">
-    import Navbar from '$lib/svelteComponents/Navbar.svelte'
-    import Occurrance from '$lib/svelteComponents/Occurrance.svelte'
-    import SavingFor from '$lib/svelteComponents/SavingFor.svelte'
-    import AddCard from '$lib/svelteComponents/AddCard.svelte'
-    import NewRecBill from '$lib/svelteComponents/NewRecBill.svelte';
-    import Paydate from '$lib/svelteComponents/Paydate.svelte';
+    import Navbar from '$lib/components/Navbar.svelte'
+    import Occurrance from '$lib/components/Occurrance.svelte'
+    import SavingFor from '$lib/components/SavingFor.svelte'
+    import AddCard from '$lib/components/AddCard.svelte'
+    import NewRecBill from '$lib/components/NewRecBill.svelte';
+    import Paydate from '$lib/components/Paydate.svelte';
     import { getAllCardsByUser } from '$lib/database/database'
     import { onMount } from 'svelte';
     import 'normalize.css';

@@ -4,7 +4,7 @@
     import { Input } from "$lib/components/ui/input/index.js";
     import { Label } from "$lib/components/ui/label/index.js";
     import { enhance } from "$app/forms";
-    import Navbar from "$lib/svelteComponents/Navbar.svelte";
+    import Navbar from "$lib/components/Navbar.svelte";
     import type { ActionData } from "./$types";
 
     let { form }: { form: ActionData } = $props();
