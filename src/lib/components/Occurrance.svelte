@@ -4,7 +4,7 @@
     let { card }= $props();
 
     function calculateSavings(): number {
-        if (card.savings.method)
+        if (card.savings.method === "percent")
             return Number((card.payAmount * (card.savings.amount * 0.01)).toFixed(2));
         else
             return card.savings.amount
@@ -20,7 +20,7 @@
     }
 
     function secondsToDate(): string {
-        const date = new Date(card.payDate * 1000);
+        const date = new Date(card.payDate);
 
         const day = date.getDate();
         const year = date.getFullYear();

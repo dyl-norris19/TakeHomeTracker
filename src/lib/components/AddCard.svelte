@@ -5,25 +5,10 @@
     import { Label } from "$lib/components/ui/label/index";
     import * as RadioGroup from "$lib/components/ui/radio-group/index.js";
     import * as Dialog from "$lib/components/ui/dialog/index";
+    import { enhance } from "$app/forms";
 
-    import { uploadNewCard, getReoccuringBills } from "$lib/database/database";
-    import { onMount } from "svelte";
-    
+    let { recurringBills }: { recurringBills: { name: string; amount: number }[] } = $props();
 
-    let selectedMonthObj = $state<{value: string, label: string }>({value: "", label: ""});
-    let selectedMonth = $derived(selectedMonthObj.value);
-    let payAmount = $state<number | null>(null);
-    let otherBillNames = $state<string[]>([]);
-    let otherBillAmounts = $state<number[]>([]);
-    let savingsType = $state<string>("");
-    let saveByPercent = $derived(savingsType === "%");
-    let savingsAmount = $state<number | null>(null);
-    let paydate = $state<Date | null>(null);
-
-    let cardOpen = $state<boolean>(false);
-
-    let { cardAdded, email }: { cardAdded: any, email: string } = $props();
-    
     type Month = {
         value: string;
         label: string;
@@ -44,188 +29,134 @@
         { value: "December", label: "December" },
     ];
 
-    let reoccur = $state<any>();
-    let reoccurBills = $state<any[]>([]);
-    let otherBills = $state<string[]>([]);
+    let selectedMonthObj = $state<Month>({ value: "", label: "" });
+    let payAmount = $state<string | number>("");
+    let savingsType = $state<string>("");
+    let savingsAmount = $state<string | number>("");
+    let reoccurBills = $state<{ name: string; amount: string | number }[]>([]);
+    let otherBills = $state<{ name: string; amount: string | number }[]>([]);
 
-    // onMount(() => {
-    //     getReoccuringBills(email);
-    // });
+    let cardOpen = $state<boolean>(false);
 
-    async function handleClick(): Promise<void> {
-        try {
-            reoccur = await getReoccuringBills(email)
-            reoccurBills = reoccur.bills;
-            // console.log("reoccurBills set: ", reoccurBills[0].name, reoccurBills[0].amount);
-        } catch (err) {
-            console.log("Error: ", err);
+    $effect(() => {
+        if (!cardOpen) {
+            selectedMonthObj = { value: "", label: "" };
+            payAmount = "";
+            savingsType = "";
+            savingsAmount = "";
+            reoccurBills = recurringBills.map((bill) => ({ name: bill.name, amount: bill.amount }));
+            otherBills = [];
         }
-    }
+    });
+
+    let reoccurBillsJson = $derived(
+        JSON.stringify(reoccurBills.map((bill) => ({ name: bill.name, amount: Number(bill.amount) })))
+    );
+    let otherBillsJson = $derived(
+        JSON.stringify(otherBills.map((bill) => ({ name: bill.name, amount: Number(bill.amount) })))
+    );
 
     function addBillClick(): void {
-        otherBills.push("");
+        otherBills.push({ name: "", amount: "" });
     }
 
     function deleteBillClick(): void {
         otherBills.pop();
-        otherBillNames.pop();
-        otherBillAmounts.pop();
     }
-
-    function getNextPaydate(): number {
-        const originalDate = new Date(reoccur.paydate * 1000);
-        const today = new Date();
-
-        if (reoccur.frequency == 1) {
-            let year = originalDate.getFullYear();
-            let month = originalDate.getMonth();
-            const day = originalDate.getDate();
-
-            while (true) {
-                const nextDate = new Date(year, month, day);
-                if (nextDate > today) {
-                    return Math.floor(nextDate.getTime() / 1000);
-                }
-                month++;
-                if (month > 11) {
-                    month = 0;
-                    year++;
-                }
-            }
-        }
-
-        // Biweekly and Weekly: fixed intervals
-        const intervalDays = reoccur.frequency == 2 ? 14: 7;
-        const intervalMs = intervalDays * 24 * 60 * 60 * 1000;
-
-        let nextDate = new Date(originalDate.getTime());
-
-        while (nextDate <= today) {
-            nextDate = new Date(nextDate.getTime() + intervalMs);
-        }
-
-        return Math.floor(nextDate.getTime() / 1000);
-    }
-
-    async function submitCard(email: string): Promise<void> {
-        try {
-            const nextPaydate = getNextPaydate();
-
-
-            const formData = {
-                userid: email,
-                month: selectedMonth,
-                payAmount: Number(payAmount),
-                reoccurBills: reoccurBills.map(bill => ({
-                    name: bill.name,
-                    amount: Number(bill.amount)
-                })),
-                otherBills: otherBillNames.map((name, i) => ({
-                    name,
-                    amount: Number(otherBillAmounts[i])
-                })),
-                savings: {
-                    method: saveByPercent,
-                    amount: Number(savingsAmount)
-                },
-                payDate: nextPaydate
-            };
-
-            cardOpen = false;
-
-            selectedMonthObj = {value: "", label: ""};
-            payAmount = null;
-            otherBillNames = []
-            otherBillAmounts = []
-            savingsType = ""
-            savingsAmount = null;
-
-            await uploadNewCard(formData);
-            // console.log(formData);
-            cardAdded();
-
-        } catch (err) {
-            console.log("error: ", err);
-        }
-    }
-
 </script>
 
 <Dialog.Root bind:open={cardOpen}>
-    <Dialog.Trigger onclick={handleClick}>
-        <Button>New Card +</Button>
+    <Dialog.Trigger asChild let:builder>
+        <Button builders={[builder]}>New Card +</Button>
     </Dialog.Trigger>
     <Dialog.Content>
-        <Dialog.Header>
-            <Dialog.Title>New Paycheck!</Dialog.Title>
-            <Dialog.Description>Fill out the info below</Dialog.Description>
-        </Dialog.Header>
-        <div class="grid gap-4 py-4">
-            <h2 class="font-bold">Basics</h2>
-            <div class="grid grid-cols-4 items-center gap-4">
-                <Label for="month" class="text-right">Month</Label>
-                <Select.Root bind:selected={selectedMonthObj} portal={null}>
-                    <Select.Trigger class="w-[180px]">
-                        <Select.Value placeholder="Select a month" />
-                    </Select.Trigger>
-                    <Select.Content>
-                        <Select.Group>
-                            {#each months as month}
-                                <Select.Item value={month.value} label={month.label}>
-                                    {month.label}
-                                </Select.Item>
-                            {/each}
-                        </Select.Group>
-                    </Select.Content>
-                    <Select.Input name="month" />
-                </Select.Root>
-            </div>
-            <div class="grid grid-cols-4 items-center gap-4">
-                <Label for="payAmt" class="text-right">Pay Amount ($)</Label>
-                <Input id="payAmt" placeholder="Enter Amount" bind:value={payAmount} class="col-span-3 w-[180px]"/>
-            </div>
-            <h2 class="font-bold">Reoccuring Bills</h2>
-            <div class="grid grid-cols-4 items-center gap-4">
-                {#each reoccurBills as bill, index (index)}
-                    <Label for="reoccur" class="text-right">{reoccurBills[index].name}</Label>
-                    <Input id="reoccur" class="col-span-3 w-[180px]" bind:value={reoccurBills[index].amount} />
-                {/each}
-            </div>
-            <h2 class="font-bold">Other Bills</h2>
-            {#if otherBills.length > 0}
-            <Button class="w-[100px]"variant="destructive" onclick={deleteBillClick}>Delete Bill</Button>
-                <div class="grid grid-cols-5 items-center gap-4">
-                    {#each otherBills as bill, index (index)}
-                        <Input placeholder="Bill Name" bind:value={otherBillNames[index]} class="col-span-2"/>
-                        <Input id="others" placeholder="Enter Amount" bind:value={otherBillAmounts[index]} class="col-span-2 w-[180px]" />
+        <form
+            method="POST"
+            action="?/createCard"
+            use:enhance={() => {
+                return async ({ result, update }) => {
+                    await update({ reset: false });
+                    if (result.type === 'success') {
+                        cardOpen = false;
+                    }
+                };
+            }}
+        >
+            <Dialog.Header>
+                <Dialog.Title>New Paycheck!</Dialog.Title>
+                <Dialog.Description>Fill out the info below</Dialog.Description>
+            </Dialog.Header>
+            <div class="grid gap-4 py-4">
+                <h2 class="font-bold">Basics</h2>
+                <div class="grid grid-cols-4 items-center gap-4">
+                    <Label for="month" class="text-right">Month</Label>
+                    <Select.Root bind:selected={selectedMonthObj} portal={null}>
+                        <Select.Trigger class="w-[180px]">
+                            <Select.Value placeholder="Select a month" />
+                        </Select.Trigger>
+                        <Select.Content>
+                            <Select.Group>
+                                {#each months as month}
+                                    <Select.Item value={month.value} label={month.label}>
+                                        {month.label}
+                                    </Select.Item>
+                                {/each}
+                            </Select.Group>
+                        </Select.Content>
+                        <Select.Input name="month" />
+                    </Select.Root>
+                </div>
+                <div class="grid grid-cols-4 items-center gap-4">
+                    <Label for="payAmt" class="text-right">Pay Amount ($)</Label>
+                    <Input id="payAmt" placeholder="Enter Amount" bind:value={payAmount} class="col-span-3 w-[180px]"/>
+                </div>
+                <h2 class="font-bold">Reoccuring Bills</h2>
+                <div class="grid grid-cols-4 items-center gap-4">
+                    {#each reoccurBills as bill, index (index)}
+                        <Label class="text-right">{bill.name}</Label>
+                        <Input class="col-span-3 w-[180px]" bind:value={reoccurBills[index].amount} />
                     {/each}
                 </div>
-            {:else}
-                <h2>(None)</h2>
-            {/if}
-            <h2 class="font-bold">Savings?</h2>
-            <div class="flex space-x-5">
-                <RadioGroup.Root bind:value={savingsType}>
-                    <div class="flex space-x-4">
-                        <div class="flex items-center space-x-2">
-                            <RadioGroup.Item value="%" id="r1" />
-                            <Label for="r1">%</Label>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <RadioGroup.Item value="flat" id="r2" />
-                            <Label for="r2">Flat Amount</Label>
-                        </div>
-                        <RadioGroup.Input name="savingsType" />
+                <h2 class="font-bold">Other Bills</h2>
+                {#if otherBills.length > 0}
+                    <Button type="button" class="w-[100px]" variant="destructive" onclick={deleteBillClick}>Delete Bill</Button>
+                    <div class="grid grid-cols-5 items-center gap-4">
+                        {#each otherBills as bill, index (index)}
+                            <Input placeholder="Bill Name" bind:value={otherBills[index].name} class="col-span-2"/>
+                            <Input placeholder="Enter Amount" bind:value={otherBills[index].amount} class="col-span-2 w-[180px]" />
+                        {/each}
                     </div>
-              </RadioGroup.Root>
-              <Input id="savingsAmt" placeholder="Enter Amount" bind:value={savingsAmount} class="col-span-3 w-[120px]"/>
+                {:else}
+                    <h2>(None)</h2>
+                {/if}
+                <h2 class="font-bold">Savings?</h2>
+                <div class="flex space-x-5">
+                    <RadioGroup.Root bind:value={savingsType}>
+                        <div class="flex space-x-4">
+                            <div class="flex items-center space-x-2">
+                                <RadioGroup.Item value="%" id="r1" />
+                                <Label for="r1">%</Label>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <RadioGroup.Item value="flat" id="r2" />
+                                <Label for="r2">Flat Amount</Label>
+                            </div>
+                            <RadioGroup.Input name="savingsType" />
+                        </div>
+                  </RadioGroup.Root>
+                  <Input placeholder="Enter Amount" bind:value={savingsAmount} class="col-span-3 w-[120px]"/>
+                </div>
             </div>
-        </div>
-        <Dialog.Footer>
-            <div class="w-full flex justify-between">
-                <Button variant="secondary" onclick={addBillClick}>Add Bill</Button>
-                <Button onclick={() => {submitCard(email)}}>Submit</Button>
-            </div>
-        </Dialog.Footer>
+            <input type="hidden" name="payAmount" value={payAmount} />
+            <input type="hidden" name="savingsAmount" value={savingsAmount} />
+            <input type="hidden" name="reoccurBills" value={reoccurBillsJson} />
+            <input type="hidden" name="otherBills" value={otherBillsJson} />
+            <Dialog.Footer>
+                <div class="w-full flex justify-between">
+                    <Button type="button" variant="secondary" onclick={addBillClick}>Add Bill</Button>
+                    <Button type="submit">Submit</Button>
+                </div>
+            </Dialog.Footer>
+        </form>
     </Dialog.Content>
 </Dialog.Root>
