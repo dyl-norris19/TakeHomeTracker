@@ -44,8 +44,8 @@
             <div class="flex flex-col items-start flex-1 occurance-container space-y-8">
                 {#if email}
                     <AddCard cardAdded={() => refreshCards(email!)} email={email} />
-                    <NewRecBill {email} />
-                    <Paydate {email} />
+                    <NewRecBill recurringBills={data.recurringBills} />
+                    <Paydate paydaySettings={data.paydaySettings} />
                 {/if}
             </div>
             <!-- <div class="flex-1 occurrence-container space-y-14 overflow-y-auto max-h-[90vh]"> 
