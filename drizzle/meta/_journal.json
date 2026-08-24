@@ -22,6 +22,13 @@
       "when": 1787530372999,
       "tag": "0002_create_payday_settings_and_recurring_bills",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787533614792,
+      "tag": "0003_create_cards",
+      "breakpoints": true
     }
   ]
 }
