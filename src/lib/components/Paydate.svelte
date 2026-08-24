@@ -27,14 +27,19 @@
         return new CalendarDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
     }
 
-    let value = $state<DateValue | undefined>(
-        paydaySettings ? toCalendarDate(paydaySettings.paydate) : undefined
-    );
-    let paydayFrequency = $state<string>(paydaySettings ? String(paydaySettings.frequency) : "");
+    let value = $state<DateValue | undefined>(undefined);
+    let paydayFrequency = $state<string>("");
     let paydateTimestamp = $derived(value ? Math.floor(value.toDate(getLocalTimeZone()).getTime() / 1000) : "");
 
     let cardOpen = $state<boolean>(false);
     let popoverOpen = $state<boolean>(false);
+
+    $effect(() => {
+        if (!cardOpen) {
+            value = paydaySettings ? toCalendarDate(paydaySettings.paydate) : undefined;
+            paydayFrequency = paydaySettings ? String(paydaySettings.frequency) : "";
+        }
+    });
 
     function handleClick() {
         // popoverOpen = false;
@@ -42,8 +47,8 @@
 </script>
 
 <Dialog.Root bind:open={cardOpen}>
-    <Dialog.Trigger>
-        <Button variant="outline">Paydate</Button>
+    <Dialog.Trigger asChild let:builder>
+        <Button variant="outline" builders={[builder]}>Paydate</Button>
     </Dialog.Trigger>
     <Dialog.Content>
         <form
