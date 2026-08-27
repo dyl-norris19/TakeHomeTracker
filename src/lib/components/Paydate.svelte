@@ -1,6 +1,6 @@
 <script lang="ts">
 
-    import { Button } from "$lib/components/ui/button/index";
+    import { Button, buttonVariants } from "$lib/components/ui/button/index";
     import * as Dialog from "$lib/components/ui/dialog/index";
     import * as RadioGroup from "$lib/components/ui/radio-group/index";
     import { Label } from "$lib/components/ui/label/index";
@@ -46,9 +46,7 @@
 </script>
 
 <Dialog.Root bind:open={cardOpen}>
-    <Dialog.Trigger asChild let:builder>
-        <Button variant="outline" builders={[builder]}>Paydate</Button>
-    </Dialog.Trigger>
+    <Dialog.Trigger type="button" class={buttonVariants({ variant: "outline" })}>Paydate</Dialog.Trigger>
     <Dialog.Content>
         <form
             method="POST"
@@ -67,20 +65,18 @@
                 <Dialog.Description>Set your paydate. Make sure it is before any cards</Dialog.Description>
             </Dialog.Header>
             <Popover.Root bind:open={popoverOpen}>
-                <Popover.Trigger asChild let:builder>
-                    <Button
-                    variant="outline"
+                <Popover.Trigger
+                    type="button"
                     class={cn(
+                        buttonVariants({ variant: "outline" }),
                         "w-[240px] justify-start text-left font-normal",
                         !value && "text-muted-foreground"
-                    )}
-                    builders={[builder]}>
+                    )}>
                         <CalendarIcon class="mr-2 h-4 w-4" />
                         {value ? df.format(value.toDate(getLocalTimeZone())) : "Pick a date"}
-                    </Button>
                 </Popover.Trigger>
                 <Popover.Content class="w-auto p-0" align="start">
-                    <Calendar bind:value onclick={handleClick}/>
+                    <Calendar type="single" bind:value onclick={handleClick}/>
                 </Popover.Content>
             </Popover.Root>
             <RadioGroup.Root bind:value={paydayFrequency}>

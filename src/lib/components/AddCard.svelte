@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Button } from "$lib/components/ui/button/index";
+    import { Button, buttonVariants } from "$lib/components/ui/button/index";
     import * as Select from "$lib/components/ui/select/index";
     import { Input } from "$lib/components/ui/input/index";
     import { Label } from "$lib/components/ui/label/index";
@@ -29,7 +29,7 @@
         { value: "December", label: "December" },
     ];
 
-    let selectedMonthObj = $state<Month>({ value: "", label: "" });
+    let selectedMonth = $state<string>("");
     let payAmount = $state<string | number>("");
     let savingsType = $state<string>("");
     let savingsAmount = $state<string | number>("");
@@ -40,7 +40,7 @@
 
     $effect(() => {
         if (!cardOpen) {
-            selectedMonthObj = { value: "", label: "" };
+            selectedMonth = "";
             payAmount = "";
             savingsType = "";
             savingsAmount = "";
@@ -66,9 +66,7 @@
 </script>
 
 <Dialog.Root bind:open={cardOpen}>
-    <Dialog.Trigger asChild let:builder>
-        <Button builders={[builder]}>New Card +</Button>
-    </Dialog.Trigger>
+    <Dialog.Trigger type="button" class={buttonVariants()}>New Card +</Dialog.Trigger>
     <Dialog.Content>
         <form
             method="POST"
@@ -90,11 +88,11 @@
                 <h2 class="font-bold">Basics</h2>
                 <div class="grid grid-cols-4 items-center gap-4">
                     <Label for="month" class="text-right">Month</Label>
-                    <Select.Root bind:selected={selectedMonthObj} portal={null}>
+                    <Select.Root type="single" bind:value={selectedMonth} name="month">
                         <Select.Trigger class="w-[180px]">
-                            <Select.Value placeholder="Select a month" />
+                            {months.find((m) => m.value === selectedMonth)?.label ?? "Select a month"}
                         </Select.Trigger>
-                        <Select.Content>
+                        <Select.Content portalProps={{ disabled: true }}>
                             <Select.Group>
                                 {#each months as month (month.value)}
                                     <Select.Item value={month.value} label={month.label}>
@@ -103,7 +101,6 @@
                                 {/each}
                             </Select.Group>
                         </Select.Content>
-                        <Select.Input name="month" />
                     </Select.Root>
                 </div>
                 <div class="grid grid-cols-4 items-center gap-4">
@@ -131,7 +128,7 @@
                 {/if}
                 <h2 class="font-bold">Savings?</h2>
                 <div class="flex space-x-5">
-                    <RadioGroup.Root bind:value={savingsType}>
+                    <RadioGroup.Root bind:value={savingsType} name="savingsType">
                         <div class="flex space-x-4">
                             <div class="flex items-center space-x-2">
                                 <RadioGroup.Item value="%" id="r1" />
@@ -141,7 +138,6 @@
                                 <RadioGroup.Item value="flat" id="r2" />
                                 <Label for="r2">Flat Amount</Label>
                             </div>
-                            <RadioGroup.Input name="savingsType" />
                         </div>
                   </RadioGroup.Root>
                   <Input placeholder="Enter Amount" bind:value={savingsAmount} class="col-span-3 w-[120px]"/>

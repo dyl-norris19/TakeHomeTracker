@@ -1,8 +1,12 @@
 <script lang="ts">
     import { Button } from "$lib/components/ui/button";
-    import { Moon, Sun } from "lucide-svelte";
+    import Moon from "@lucide/svelte/icons/moon";
+    import Sun from "@lucide/svelte/icons/sun";
     import { onMount } from "svelte";
     import { resolve } from "$app/paths";
+    import type { Snippet } from "svelte";
+
+    let { children }: { children?: Snippet } = $props();
 
     let theme = $state("light");
     // let { login } = $props();
@@ -21,47 +25,11 @@
 
 <header class="w-full border-b shadow-sm dark:border-neutral-800">
     <div class="container mx-auto flex h-16 items-center justify-between px-4">
-        <!-- Left: Menubar Navigation -->
-        <!-- <Menubar.Root>
-            <Menubar.Menu>
-                <Menubar.Trigger>About</Menubar.Trigger>
-                <Menubar.Content>
-                    <Menubar.Item>
-                        <a href="/about">Our Team</a>
-                    </Menubar.Item>
-                    <Menubar.Item>
-                        <a href="/about/mission">Our Mission</a>
-                    </Menubar.Item>
-                </Menubar.Content>
-            </Menubar.Menu>
-            <Menubar.Menu>
-                <Menubar.Trigger>Projects</Menubar.Trigger>
-                <Menubar.Content>
-                    <Menubar.Item>
-                        <a href="/projects">All Projects</a>
-                    </Menubar.Item>
-                    <Menubar.Item>
-                        <a href="/projects/latest">Latest Projects</a>
-                    </Menubar.Item>
-                </Menubar.Content>
-            </Menubar.Menu>
-            <Menubar.Menu>
-                <Menubar.Trigger>Contact</Menubar.Trigger>
-                <Menubar.Content>
-                    <Menubar.Item>
-                        <a href="/contact">Contact Us</a>
-                    </Menubar.Item>
-                    <Menubar.Item>
-                        <a href="/support">Support</a>
-                    </Menubar.Item>
-                </Menubar.Content>
-            </Menubar.Menu>
-        </Menubar.Root> -->
         <div class="flex items-center gap-10">
             <Button
                 variant="outline"
                 size="icon"
-                on:click={toggleTheme}
+                onclick={toggleTheme}
                 aria-label="Toggle theme"
             >
                 {#if theme === "light"}
@@ -85,7 +53,7 @@
 
         <!-- Right: Theme Toggle & Login -->
         <div class="flex items-center gap-2">
-            <slot/>
+            {@render children?.()}
         </div>
     </div>
 </header>

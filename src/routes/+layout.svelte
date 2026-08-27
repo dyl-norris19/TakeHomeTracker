@@ -3,19 +3,20 @@
     import yahoo from '$lib/assets/yahoo.jpg';
     import Navbar from '$lib/components/Navbar.svelte';
     import { Button } from '$lib/components/ui/button/index';
+    import { resolve } from '$app/paths';
     import type { LayoutData } from './$types';
 
     let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 </script>
 
 {#snippet loggedOutCorner()}
-    <Button href="/login">
+    <Button href={resolve('/login')}>
         Login
     </Button>
 {/snippet}
 
 {#snippet loggedInCorner()}
-    <Button href="/tracker" variant="outline">
+    <Button href={resolve('/tracker')} variant="outline">
         Tracker
     </Button>
     <form method="POST" action="/logout">

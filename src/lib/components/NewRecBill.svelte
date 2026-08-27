@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Input } from "$lib/components/ui/input/index";
-    import { Button } from "$lib/components/ui/button/index";
+    import { Button, buttonVariants } from "$lib/components/ui/button/index";
     import * as Dialog from "$lib/components/ui/dialog/index";
     import { enhance } from "$app/forms";
 
@@ -49,10 +49,8 @@
 </script>
 
 <Dialog.Root bind:open={cardOpen}>
-    <Dialog.Trigger asChild let:builder>
-        <Button variant="secondary" builders={[builder]}>
-            Edit Reoccuring Bills
-        </Button>
+    <Dialog.Trigger type="button" class={buttonVariants({ variant: "secondary" })}>
+        Edit Reoccuring Bills
     </Dialog.Trigger>
     <Dialog.Content>
         <form
