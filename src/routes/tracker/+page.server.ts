@@ -6,6 +6,7 @@ import { getRecurringBills } from '$lib/server/db/queries/recurring-bills';
 import { replaceRecurringBills } from '$lib/server/db/commands/recurring-bills';
 import { getCardsByUser } from '$lib/server/db/queries/cards';
 import { createCard } from '$lib/server/db/commands/cards';
+import { getFormString } from '$lib/server/form-data';
 
 function getNextPaydate(paydate: Date, frequency: number): Date {
     const today = new Date();
@@ -31,7 +32,7 @@ function getNextPaydate(paydate: Date, frequency: number): Date {
     const intervalDays = frequency === 2 ? 14 : 7;
     const intervalMs = intervalDays * 24 * 60 * 60 * 1000;
 
-    let nextDate = new Date(paydate.getTime());
+    let nextDate = new Date(paydate);
     while (nextDate <= today) {
         nextDate = new Date(nextDate.getTime() + intervalMs);
     }
@@ -39,10 +40,24 @@ function getNextPaydate(paydate: Date, frequency: number): Date {
     return nextDate;
 }
 
+function parseSavingsMethod(raw: string): 'percent' | 'flat' | null {
+    if (raw === '%') {
+        return 'percent';
+    }
+    if (raw === 'flat') {
+        return 'flat';
+    }
+    return null;
+}
+
 function parseBills(raw: FormDataEntryValue | null): { name: string; amount: number }[] | null {
+    if (typeof raw !== 'string') {
+        return null;
+    }
+
     let bills: unknown;
     try {
-        bills = JSON.parse(String(raw));
+        bills = JSON.parse(raw);
     } catch {
         return null;
     }
@@ -120,10 +135,10 @@ export const actions: Actions = {
         }
 
         const formData = await request.formData();
-        const month = String(formData.get('month') ?? '');
+        const month = getFormString(formData, 'month') ?? '';
         const payAmount = Number(formData.get('payAmount'));
-        const savingsTypeRaw = String(formData.get('savingsType') ?? '');
-        const savingsMethod = savingsTypeRaw === '%' ? 'percent' : savingsTypeRaw === 'flat' ? 'flat' : null;
+        const savingsTypeRaw = getFormString(formData, 'savingsType') ?? '';
+        const savingsMethod = parseSavingsMethod(savingsTypeRaw);
         const savingsAmount = Number(formData.get('savingsAmount'));
         const reoccurBills = parseBills(formData.get('reoccurBills'));
         const otherBills = parseBills(formData.get('otherBills'));

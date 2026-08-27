@@ -3,15 +3,16 @@ import bcrypt from 'bcryptjs';
 import type { Actions } from './$types';
 import { signupUser } from '$lib/server/db/commands/users';
 import { getUserByEmail } from '$lib/server/db/queries/users';
+import { getFormString } from '$lib/server/form-data';
 
 export const actions: Actions = {
     default: async ({ request }) => {
         const formData = await request.formData();
 
-        const email = formData.get('email')?.toString().trim().toLowerCase();
-        const password = formData.get('password')?.toString();
-        const firstName = formData.get('firstname')?.toString().trim();
-        const lastName = formData.get('lastname')?.toString().trim();
+        const email = getFormString(formData, 'email')?.trim().toLowerCase();
+        const password = getFormString(formData, 'password');
+        const firstName = getFormString(formData, 'firstname')?.trim();
+        const lastName = getFormString(formData, 'lastname')?.trim();
 
         if (!email || !password || !firstName || !lastName) {
             return fail(400, { error: 'All fields are required.', email, firstName, lastName });

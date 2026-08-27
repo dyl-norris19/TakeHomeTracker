@@ -3,14 +3,15 @@ import bcrypt from 'bcryptjs';
 import type { Actions } from './$types';
 import { getUserByEmail } from '$lib/server/db/queries/users';
 import { generateSessionToken, createSession, setSessionTokenCookie } from '$lib/server/auth';
+import { getFormString } from '$lib/server/form-data';
 
 export const actions: Actions = {
     default: async (event) => {
         const { request } = event;
         const formData = await request.formData();
 
-        const email = formData.get('email')?.toString().trim().toLowerCase();
-        const password = formData.get('password')?.toString();
+        const email = getFormString(formData, 'email')?.trim().toLowerCase();
+        const password = getFormString(formData, 'password');
 
         if (!email || !password) {
             return fail(400, { error: 'Email and password are required.', email });
