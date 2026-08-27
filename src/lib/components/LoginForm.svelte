@@ -4,6 +4,7 @@
 	import { Input } from "$lib/components/ui/input/index.js";
 	import { Label } from "$lib/components/ui/label/index.js";
 	import { enhance } from "$app/forms";
+	import { resolve } from "$app/paths";
 
 	let {
 		form
@@ -41,7 +42,7 @@
 		</form>
 		<div class="mt-4 text-center text-sm">
 			Don't have an account?
-			<a href="/signup" class="underline"> Sign up </a>
+			<a href={resolve('/signup')} class="underline"> Sign up </a>
 		</div>
 	</Card.Content>
 </Card.Root>

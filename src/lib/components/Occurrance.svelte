@@ -12,8 +12,8 @@
 
     // console.log(card);
     function calculateTakeHome(): number {
-        const reoccurBillsTotal: number = card.reoccurBills.reduce((sum: number, bill:any) => sum + bill.amount, 0);
-        const otherBillsTotal:number = card.otherBills.reduce((sum:number, bill:any) => sum + bill.amount, 0);
+        const reoccurBillsTotal: number = card.reoccurBills.reduce((sum: number, bill: { amount: number }) => sum + bill.amount, 0);
+        const otherBillsTotal:number = card.otherBills.reduce((sum:number, bill: { amount: number }) => sum + bill.amount, 0);
         const savings: number = calculateSavings();
 
         return card.payAmount - reoccurBillsTotal - otherBillsTotal - savings;
@@ -51,10 +51,10 @@
             <Card.Description>{secondsToDate()}</Card.Description>
         </Card.Header>
         <Card.Content>
-            {#each card.reoccurBills as bill}
+            {#each card.reoccurBills as bill, index (bill.name + index)}
                 <p>{bill.name}: ${bill.amount}</p>
             {/each}
-            {#each card.otherBills as bill}
+            {#each card.otherBills as bill, index (bill.name + index)}
                 <p>{bill.name}: ${bill.amount}</p>
             {/each}
         </Card.Content>

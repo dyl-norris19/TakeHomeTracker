@@ -31,11 +31,11 @@
 		<Calendar.NextButton />
 	</Calendar.Header>
 	<Calendar.Months>
-		{#each months as month}
+		{#each months as month (month.value.toString())}
 			<Calendar.Grid>
 				<Calendar.GridHead>
 					<Calendar.GridRow class="flex">
-						{#each weekdays as weekday}
+						{#each weekdays as weekday (weekday)}
 							<Calendar.HeadCell>
 								{weekday.slice(0, 2)}
 							</Calendar.HeadCell>
@@ -43,9 +43,9 @@
 					</Calendar.GridRow>
 				</Calendar.GridHead>
 				<Calendar.GridBody>
-					{#each month.weeks as weekDates}
+					{#each month.weeks as weekDates (weekDates[0].toString())}
 						<Calendar.GridRow class="mt-2 w-full">
-							{#each weekDates as date}
+							{#each weekDates as date (date.toString())}
 								<Calendar.Cell {date}>
 									<Calendar.Day {date} month={month.value} />
 								</Calendar.Cell>

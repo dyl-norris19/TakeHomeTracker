@@ -1,12 +1,9 @@
 <script lang="ts">
-    import Navbar from '$lib/components/Navbar.svelte'
     import Occurrance from '$lib/components/Occurrance.svelte'
-    import SavingFor from '$lib/components/SavingFor.svelte'
     import AddCard from '$lib/components/AddCard.svelte'
     import NewRecBill from '$lib/components/NewRecBill.svelte';
     import Paydate from '$lib/components/Paydate.svelte';
     import 'normalize.css';
-    import { Button } from '$lib/components/ui/button/index';
     import type { PageData } from './$types';
 
     let { data }: { data: PageData } = $props();
@@ -38,7 +35,7 @@
                 <SavingFor />
             </div> -->
             <div class="flex-[2] occurrence-container space-y-4 overflow-y-auto max-h-[90vh]">
-                {#each userCards as card}
+                {#each userCards as card (card.id)}
                     <Occurrance {card} />
                 {/each}
             </div>

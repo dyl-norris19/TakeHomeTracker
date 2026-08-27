@@ -1,6 +1,5 @@
 <script lang="ts">
     import { Input } from "$lib/components/ui/input/index";
-    import { Label } from "$lib/components/ui/label/index";
     import { Button } from "$lib/components/ui/button/index";
     import * as Dialog from "$lib/components/ui/dialog/index";
     import { enhance } from "$app/forms";
@@ -75,18 +74,18 @@
             <div class="grid gap-4 py-4">
                 <h2 class="font-bold">Reoccuring Bills</h2>
                 <div class="grid grid-cols-4 items-center gap-4">
-                    {#each reoccurBills as bill, index (index)}
+                    {#each reoccurBills as bill, index (bill)}
                         {#if deleteMode}
                             <input
                                 type="checkbox"
                                 class="justify-self-center h-4 w-4"
                                 bind:checked={selectedForDelete[index]}
                             />
-                            <Input bind:value={reoccurBills[index].name} />
-                            <Input class="col-span-2 w-[180px]" bind:value={reoccurBills[index].amount} />
+                            <Input bind:value={bill.name} />
+                            <Input class="col-span-2 w-[180px]" bind:value={bill.amount} />
                         {:else}
-                            <Input class="text-right" bind:value={reoccurBills[index].name} />
-                            <Input class="col-span-3 w-[180px]" bind:value={reoccurBills[index].amount} />
+                            <Input class="text-right" bind:value={bill.name} />
+                            <Input class="col-span-3 w-[180px]" bind:value={bill.amount} />
                         {/if}
                     {/each}
                 </div>

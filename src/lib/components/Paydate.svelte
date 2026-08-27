@@ -12,7 +12,6 @@
         getLocalTimeZone
     } from "@internationalized/date";
     import { cn } from "$lib/utils.js";
-    import { buttonVariants } from "$lib/components/ui/button/index.js";
     import { Calendar } from "$lib/components/ui/calendar/index.js";
     import * as Popover from "$lib/components/ui/popover/index.js";
     import { enhance } from "$app/forms";
@@ -87,7 +86,7 @@
             <RadioGroup.Root bind:value={paydayFrequency}>
                 <div class="flex space-x-4">
                     <div class="flex items-center space-x-2">
-                        <RadioGroup.Item value={"1"} id="r1" />
+                        <RadioGroup.Item value="1" id="r1" />
                         <Label for="r1">Monthly</Label>
                     </div>
                     <div class="flex items-center space-x-2">

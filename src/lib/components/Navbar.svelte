@@ -1,8 +1,8 @@
 <script lang="ts">
-    import * as Menubar from "$lib/components/ui/menubar";
     import { Button } from "$lib/components/ui/button";
     import { Moon, Sun } from "lucide-svelte";
     import { onMount } from "svelte";
+    import { resolve } from "$app/paths";
 
     let theme = $state("light");
     // let { login } = $props();
@@ -79,7 +79,7 @@
         </div>
 
         <!-- Middle: Logo -->
-        <a href="/" class="text-xl font-semibold">  
+        <a href={resolve('/')} class="text-xl font-semibold">
             TakeHome Tracker
         </a>
 

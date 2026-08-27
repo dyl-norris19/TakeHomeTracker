@@ -5,6 +5,7 @@
     import { Label } from "$lib/components/ui/label/index.js";
     import { enhance } from "$app/forms";
     import Navbar from "$lib/components/Navbar.svelte";
+    import { resolve } from "$app/paths";
     import type { ActionData } from "./$types";
 
     let { form }: { form: ActionData } = $props();
@@ -55,7 +56,7 @@
             </form>
             <div class="mt-4 text-center text-sm">
                 Already have an account?
-                <a href="/login" class="underline"> Sign in </a>
+                <a href={resolve('/login')} class="underline"> Sign in </a>
             </div>
         </Card.Content>
     </Card.Root>

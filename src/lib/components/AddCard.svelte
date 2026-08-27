@@ -96,7 +96,7 @@
                         </Select.Trigger>
                         <Select.Content>
                             <Select.Group>
-                                {#each months as month}
+                                {#each months as month (month.value)}
                                     <Select.Item value={month.value} label={month.label}>
                                         {month.label}
                                     </Select.Item>
@@ -112,18 +112,18 @@
                 </div>
                 <h2 class="font-bold">Reoccuring Bills</h2>
                 <div class="grid grid-cols-4 items-center gap-4">
-                    {#each reoccurBills as bill, index (index)}
+                    {#each reoccurBills as bill (bill)}
                         <Label class="text-right">{bill.name}</Label>
-                        <Input class="col-span-3 w-[180px]" bind:value={reoccurBills[index].amount} />
+                        <Input class="col-span-3 w-[180px]" bind:value={bill.amount} />
                     {/each}
                 </div>
                 <h2 class="font-bold">Other Bills</h2>
                 {#if otherBills.length > 0}
                     <Button type="button" class="w-[100px]" variant="destructive" onclick={deleteBillClick}>Delete Bill</Button>
                     <div class="grid grid-cols-5 items-center gap-4">
-                        {#each otherBills as bill, index (index)}
-                            <Input placeholder="Bill Name" bind:value={otherBills[index].name} class="col-span-2"/>
-                            <Input placeholder="Enter Amount" bind:value={otherBills[index].amount} class="col-span-2 w-[180px]" />
+                        {#each otherBills as bill (bill)}
+                            <Input placeholder="Bill Name" bind:value={bill.name} class="col-span-2"/>
+                            <Input placeholder="Enter Amount" bind:value={bill.amount} class="col-span-2 w-[180px]" />
                         {/each}
                     </div>
                 {:else}
