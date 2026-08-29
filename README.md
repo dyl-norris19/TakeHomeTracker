@@ -1,47 +1,137 @@
-# Svelte + TS + Vite
+# TakeHome Tracker
 
-This template should help get you started developing with Svelte and TypeScript in Vite.
+A small self-hosted web app for planning what's left of each paycheck. You tell it
+when you get paid and what bills you have, then build a **card** for each pay period.
+Every card shows your **take-home** for that period:
 
-## Recommended IDE Setup
+```
+take-home = pay − recurring bills − one-off bills − savings
+```
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+## What it does
 
-## Need an official Svelte framework?
+- **Payday settings** – set your pay date and how often you're paid (weekly,
+  biweekly, or monthly). The app works out the next pay date from there.
+- **Recurring bills** – keep a reusable list of bills that hit every period
+  (rent, phone, subscriptions, …).
+- **Cards** – one per pay period. A card snapshots your recurring bills, adds any
+  one-off bills for that period, and applies a savings rule (a percentage of pay
+  or a flat amount). It then displays the savings amount, the take-home, and the
+  pay date. Cards are listed by month.
+- **Accounts** – email + password sign up / log in. Passwords are hashed with
+  bcrypt; sessions are server-side (a hashed token in an `httpOnly` cookie, 30-day
+  expiry with sliding renewal).
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+## Tech stack
 
-## Technical considerations
+| Area | Choice |
+| --- | --- |
+| Framework | SvelteKit 2 / Svelte 5, `@sveltejs/adapter-node` |
+| Language | TypeScript |
+| UI | Tailwind CSS 3, shadcn-svelte components (bits-ui) |
+| Database | SQLite via Drizzle ORM + `better-sqlite3` |
+| Build | Vite 6 |
+| Tooling | ESLint, SonarQube |
 
-**Why use this over SvelteKit?**
+Migrations live in `drizzle/` and are applied automatically on server start
+(`src/hooks.server.ts` → `runMigrations()`), so there's no separate migrate step
+to run in dev or prod.
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+> This started life as a Vite SPA backed by AWS Lambda + DynamoDB. It was rewritten
+> as a single SvelteKit app on SQLite so it can be self-hosted from one container.
 
-This template contains as little as possible to get started with Vite + TypeScript + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
+## Requirements
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
+- **Node 22 or newer**
+- Docker + Docker Compose (for the container workflow)
 
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
+## Running it
 
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
+### Production (Docker)
 
-**Why include `.vscode/extensions.json`?**
+```bash
+cp .env.example .env
+# edit .env and set ORIGIN to the URL you'll actually load in the browser,
+# e.g. ORIGIN=https://takehome.example.com   (or http://localhost:9190 for a local test)
 
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
+docker compose -f docker-compose.yml up -d --build
+```
 
-**Why enable `allowJs` in the TS template?**
+### Development
 
-While `allowJs: false` would indeed prevent the use of `.js` files in the project, it does not prevent the use of JavaScript syntax in `.svelte` files. In addition, it would force `checkJs: false`, bringing the worst of both worlds: not being able to guarantee the entire codebase is TypeScript, and also having worse typechecking for the existing JavaScript. In addition, there are valid use cases in which a mixed codebase may be relevant.
+Local, no container:
 
-**Why is HMR not preserving my local component state?**
+```bash
+npm install
+npm run dev          # http://localhost:5173
+```
 
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/rixo/svelte-hmr#svelte-hmr).
+Or with Docker (Vite dev server with hot reload, plus a SonarQube instance):
 
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
+```bash
+# .env needs VITE_ALLOWED_HOSTS set to the host you'll open the dev server on
+docker compose up
+```
 
-```ts
-// store.ts
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
+`docker compose up` (no `-f`) merges `docker-compose.override.yml`, which brings up:
+
+| Service | Port | Purpose |
+| --- | --- | --- |
+| `app` | 5173 | Vite dev server (hot reload) |
+| `sonarqube` | 9000 | Code quality scanner |
+| `app-prod` | 9190 | The production build (also started; needs `ORIGIN`) |
+
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the dev server |
+| `npm run build` | Production build to `build/` (run it with `node build`) |
+| `npm run preview` | Preview the build with `vite preview` |
+| `npm run check` | `svelte-check` type checking |
+| `npm run lint` | ESLint |
+
+## Environment variables
+
+| Variable | Where | Default | Notes |
+| --- | --- | --- | --- |
+| `ORIGIN` | prod | — | **Required.** Public URL, scheme + host, no trailing slash. |
+| `VITE_ALLOWED_HOSTS` | dev | — | Host the Vite dev server accepts. |
+| `DATABASE_PATH` | any | `data/data.sqlite` | SQLite file location. Compose sets it to `/app/data/data.sqlite`. |
+| `PORT` | prod | `3000` | Port the Node server listens on inside the container. |
+
+`.env` is gitignored; `.env.example` is the checked-in template.
+
+## Database changes
+
+Schema is defined in `src/lib/server/db/schema/`. After editing it, generate a
+migration:
+
+```bash
+npx drizzle-kit generate
+```
+
+This writes SQL to `drizzle/`. Commit it — it's applied automatically the next
+time the server starts.
+
+## Project layout
+
+```
+src/
+  hooks.server.ts            session handling + run migrations on startup
+  routes/
+    +page.svelte             landing page
+    login/  signup/          auth forms
+    logout/                  POST endpoint, clears the session
+    tracker/                 the app: payday settings, bills, cards
+  lib/
+    components/              UI (cards, forms, navbar) + shadcn-svelte in ui/
+    server/
+      auth.ts                sessions, cookies, password checks
+      db/
+        index.ts             better-sqlite3 + Drizzle connection
+        migrate.ts           runMigrations()
+        schema/  queries/  commands/
+drizzle/                     generated migrations
+data/                        SQLite database (gitignored)
 ```
