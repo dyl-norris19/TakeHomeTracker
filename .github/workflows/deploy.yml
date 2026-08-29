@@ -1,0 +1,38 @@
+name: Deploy to prod
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, prod]
+
+    steps:
+      - name: Pull, rebuild, restart
+        run: |
+          set -euo pipefail
+          cd ~/TakeHomeTracker
+          git fetch --prune origin
+          git reset --hard origin/main
+          docker compose -f docker-compose.yml up -d --build --remove-orphans
+          docker image prune -f
+
+      - name: Health check
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:9190/ >/dev/null; then
+              echo "prod is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "health check failed after ~60s — recent logs:"
+          docker compose -f ~/TakeHomeTracker/docker-compose.yml logs --tail=80 app-prod
+          exit 1
