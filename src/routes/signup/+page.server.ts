@@ -4,6 +4,7 @@ import type { Actions } from './$types';
 import { signupUser } from '$lib/server/db/commands/users';
 import { getUserByEmail } from '$lib/server/db/queries/users';
 import { getFormString } from '$lib/server/form-data';
+import { isValidEmail } from '$lib/validation';
 
 export const actions: Actions = {
     default: async ({ request }) => {
@@ -11,11 +12,30 @@ export const actions: Actions = {
 
         const email = getFormString(formData, 'email')?.trim().toLowerCase();
         const password = getFormString(formData, 'password');
+        const confirmPassword = getFormString(formData, 'confirmPassword');
         const firstName = getFormString(formData, 'firstname')?.trim();
         const lastName = getFormString(formData, 'lastname')?.trim();
 
-        if (!email || !password || !firstName || !lastName) {
-            return fail(400, { error: 'All fields are required.', email, firstName, lastName });
+        if (!firstName) {
+            return fail(400, { error: 'Enter your first name.', email, firstName, lastName });
+        }
+        if (!lastName) {
+            return fail(400, { error: 'Enter your last name.', email, firstName, lastName });
+        }
+        if (!email) {
+            return fail(400, { error: 'Enter your email address.', email, firstName, lastName });
+        }
+        if (!isValidEmail(email)) {
+            return fail(400, { error: 'Please enter a valid email address.', email, firstName, lastName });
+        }
+        if (!password) {
+            return fail(400, { error: 'Enter a password.', email, firstName, lastName });
+        }
+        if (!confirmPassword) {
+            return fail(400, { error: 'Enter your password again to confirm it.', email, firstName, lastName });
+        }
+        if (password !== confirmPassword) {
+            return fail(400, { error: 'The two passwords do not match.', email, firstName, lastName });
         }
 
         const existingUser = await getUserByEmail(email);

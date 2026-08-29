@@ -19,7 +19,9 @@
 		<Card.Description>Enter your email below to login to your account</Card.Description>
 	</Card.Header>
 	<Card.Content>
-		<form method="POST" use:enhance>
+		<!-- novalidate: we surface our own "invalid email" message from the server
+		     instead of the browser's native validation bubble -->
+		<form method="POST" novalidate use:enhance>
 			<div class="grid gap-4">
 				{#if form?.error}
 					<p class="text-sm text-red-500">{form.error}</p>

@@ -4,14 +4,11 @@
     import { Input } from "$lib/components/ui/input/index.js";
     import { Label } from "$lib/components/ui/label/index.js";
     import { enhance } from "$app/forms";
-    import Navbar from "$lib/components/Navbar.svelte";
     import { resolve } from "$app/paths";
     import type { ActionData } from "./$types";
 
     let { form }: { form: ActionData } = $props();
 </script>
-
-<Navbar />
 
 <div class="flex h-screen w-full items-center justify-center px-4">
     <Card.Root class="mx-auto max-w-sm">
@@ -20,7 +17,9 @@
             <Card.Description>Enter your information to create an account</Card.Description>
         </Card.Header>
         <Card.Content>
-            <form method="POST" use:enhance>
+            <!-- novalidate: we surface our own field messages from the server
+                 instead of the browser's native validation bubble -->
+            <form method="POST" novalidate use:enhance>
                 <div class="grid gap-4">
                     {#if form?.error}
                         <p class="text-sm text-red-500">{form.error}</p>
@@ -50,8 +49,14 @@
                         <Label for="password">Password</Label>
                         <Input id="password" name="password" type="password" required />
                     </div>
+                    <div class="grid gap-2">
+                        <Label for="confirm-password">Confirm password</Label>
+                        <Input id="confirm-password" name="confirmPassword" type="password" required />
+                    </div>
                     <Button type="submit" class="w-full">Create an account</Button>
+                    <!-- TODO: GitHub OAuth not implemented yet — hidden until it is
                     <Button variant="outline" class="w-full" type="button">Sign up with GitHub</Button>
+                    -->
                 </div>
             </form>
             <div class="mt-4 text-center text-sm">
