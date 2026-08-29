@@ -1,7 +1,14 @@
 <script lang="ts">
     import * as Card from "$lib/components/ui/card/index.js";
+    import * as Dialog from "$lib/components/ui/dialog/index";
+    import { Button, buttonVariants } from "$lib/components/ui/button/index";
+    import Trash2 from "@lucide/svelte/icons/trash-2";
+    import { enhance } from "$app/forms";
+    import { cn } from "$lib/utils.js";
 
     let { card }= $props();
+
+    let deleteOpen = $state<boolean>(false);
 
     function calculateSavings(): number {
         if (card.savings.method === "percent")
@@ -44,9 +51,51 @@
 <div>
     <Card.Root class="max-w-[50vw] w-full mx-auto">
         <Card.Header>
-            <Card.Title class="flex justify-between">
+            <Card.Title class="flex justify-between items-center">
                 <p>{card.month}</p>
-                <p>Pay: ${card.payAmount}</p>
+                <div class="flex items-center gap-3">
+                    <p>Pay: ${card.payAmount}</p>
+                    <Dialog.Root bind:open={deleteOpen}>
+                        <Dialog.Trigger
+                            type="button"
+                            class={cn(
+                                buttonVariants({ variant: "ghost", size: "icon" }),
+                                "h-8 w-8 text-muted-foreground hover:text-destructive"
+                            )}
+                            aria-label="Delete card"
+                        >
+                            <Trash2 class="h-4 w-4" />
+                        </Dialog.Trigger>
+                        <Dialog.Content>
+                            <Dialog.Header>
+                                <Dialog.Title>Delete this card?</Dialog.Title>
+                                <Dialog.Description>
+                                    The {card.month} card will be permanently deleted. This can't be undone.
+                                </Dialog.Description>
+                            </Dialog.Header>
+                            <form
+                                method="POST"
+                                action="?/deleteCard"
+                                use:enhance={() => {
+                                    return async ({ result, update }) => {
+                                        await update();
+                                        if (result.type === "success") {
+                                            deleteOpen = false;
+                                        }
+                                    };
+                                }}
+                            >
+                                <input type="hidden" name="cardId" value={card.id} />
+                                <Dialog.Footer>
+                                    <Button type="button" variant="secondary" onclick={() => (deleteOpen = false)}>
+                                        Cancel
+                                    </Button>
+                                    <Button type="submit" variant="destructive">Delete</Button>
+                                </Dialog.Footer>
+                            </form>
+                        </Dialog.Content>
+                    </Dialog.Root>
+                </div>
             </Card.Title>
             <Card.Description>{secondsToDate()}</Card.Description>
         </Card.Header>

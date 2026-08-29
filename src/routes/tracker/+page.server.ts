@@ -5,7 +5,7 @@ import { upsertPaydaySettings } from '$lib/server/db/commands/payday-settings';
 import { getRecurringBills } from '$lib/server/db/queries/recurring-bills';
 import { replaceRecurringBills } from '$lib/server/db/commands/recurring-bills';
 import { getCardsByUser } from '$lib/server/db/queries/cards';
-import { createCard } from '$lib/server/db/commands/cards';
+import { createCard, deleteCard } from '$lib/server/db/commands/cards';
 import { getFormString } from '$lib/server/form-data';
 
 function getNextPaydate(paydate: Date, frequency: number): Date {
@@ -166,5 +166,25 @@ export const actions: Actions = {
         });
 
         return { cardSuccess: true };
+    },
+
+    deleteCard: async ({ request, locals }) => {
+        if (!locals.user) {
+            return fail(401);
+        }
+
+        const formData = await request.formData();
+        const cardId = Number(formData.get('cardId'));
+
+        if (!cardId || Number.isNaN(cardId)) {
+            return fail(400, { cardError: 'Invalid card.' });
+        }
+
+        const deleted = await deleteCard(locals.user.id, cardId);
+        if (!deleted) {
+            return fail(404, { cardError: 'Card not found.' });
+        }
+
+        return { cardDeleted: true };
     }
 };
