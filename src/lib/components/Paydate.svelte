@@ -32,13 +32,25 @@
 
     let cardOpen = $state<boolean>(false);
     let popoverOpen = $state<boolean>(false);
+    let errorMsg = $state<string>("");
 
     $effect(() => {
         if (!cardOpen) {
             value = paydaySettings ? toCalendarDate(paydaySettings.paydate) : undefined;
             paydayFrequency = paydaySettings ? String(paydaySettings.frequency) : "";
+            errorMsg = "";
         }
     });
+
+    function validate(): string {
+        if (!value) {
+            return "Pick your paydate.";
+        }
+        if (!paydayFrequency) {
+            return "Choose how often you get paid.";
+        }
+        return "";
+    }
 
     function handleClick() {
         // popoverOpen = false;
@@ -51,11 +63,23 @@
         <form
             method="POST"
             action="?/updatePaydate"
-            use:enhance={() => {
+            use:enhance={({ cancel }) => {
+                const problem = validate();
+                if (problem) {
+                    errorMsg = problem;
+                    cancel();
+                    return;
+                }
+                errorMsg = '';
                 return async ({ result, update }) => {
                     await update({ reset: false });
                     if (result.type === 'success') {
                         cardOpen = false;
+                    } else if (result.type === 'failure') {
+                        const data = result.data as { paydateError?: string } | undefined;
+                        errorMsg = data?.paydateError ?? 'Something went wrong — try again.';
+                    } else {
+                        errorMsg = 'Something went wrong — try again.';
                     }
                 };
             }}
@@ -64,6 +88,9 @@
                 <Dialog.Title>Paydate</Dialog.Title>
                 <Dialog.Description>Set your paydate. Make sure it is before any cards</Dialog.Description>
             </Dialog.Header>
+            {#if errorMsg}
+                <p class="text-sm text-red-500">{errorMsg}</p>
+            {/if}
             <Popover.Root bind:open={popoverOpen}>
                 <Popover.Trigger
                     type="button"

@@ -6,28 +6,23 @@
     import * as RadioGroup from "$lib/components/ui/radio-group/index.js";
     import * as Dialog from "$lib/components/ui/dialog/index";
     import { enhance } from "$app/forms";
+    import {
+        MONTHS,
+        parseAmount,
+        validateCardForm,
+        type CardFormErrors,
+        type CardFormValues
+    } from "$lib/validation";
 
-    let { recurringBills }: { recurringBills: { name: string; amount: number }[] } = $props();
+    let {
+        recurringBills,
+        paydaySettings
+    }: {
+        recurringBills: { name: string; amount: number }[];
+        paydaySettings?: { paydate: Date; frequency: number };
+    } = $props();
 
-    type Month = {
-        value: string;
-        label: string;
-    };
-
-    const months: Month[] = [
-        { value: "January", label: "January" },
-        { value: "February", label: "February"},
-        { value: "March", label: "March" },
-        { value: "April", label: "April" },
-        { value: "May", label: "May" },
-        { value: "June", label: "June" },
-        { value: "July", label: "July" },
-        { value: "August", label: "August" },
-        { value: "September", label: "September" },
-        { value: "October", label: "October" },
-        { value: "November", label: "November" },
-        { value: "December", label: "December" },
-    ];
+    const months = MONTHS.map((month) => ({ value: month, label: month }));
 
     let selectedMonth = $state<string>("");
     let payAmount = $state<string | number>("");
@@ -38,6 +33,9 @@
 
     let cardOpen = $state<boolean>(false);
 
+    let fieldErrors = $state<CardFormErrors>({});
+    let submitError = $state<string>("");
+
     $effect(() => {
         if (!cardOpen) {
             selectedMonth = "";
@@ -46,14 +44,38 @@
             savingsAmount = "";
             reoccurBills = recurringBills.map((bill) => ({ name: bill.name, amount: bill.amount }));
             otherBills = [];
+            fieldErrors = {};
+            submitError = "";
         }
     });
 
+    function currentValues(): CardFormValues {
+        return {
+            month: selectedMonth,
+            payAmount: parseAmount(payAmount),
+            savingsMethod:
+                savingsType === "%" ? "percent" : savingsType === "flat" ? "flat" : null,
+            savingsAmount: parseAmount(savingsAmount),
+            reoccurBills: reoccurBills.map((bill) => ({
+                name: bill.name,
+                amount: parseAmount(bill.amount)
+            })),
+            otherBills: otherBills.map((bill) => ({
+                name: bill.name,
+                amount: parseAmount(bill.amount)
+            }))
+        };
+    }
+
     let reoccurBillsJson = $derived(
-        JSON.stringify(reoccurBills.map((bill) => ({ name: bill.name, amount: Number(bill.amount) })))
+        JSON.stringify(
+            reoccurBills.map((bill) => ({ name: bill.name, amount: parseAmount(bill.amount) }))
+        )
     );
     let otherBillsJson = $derived(
-        JSON.stringify(otherBills.map((bill) => ({ name: bill.name, amount: Number(bill.amount) })))
+        JSON.stringify(
+            otherBills.map((bill) => ({ name: bill.name, amount: parseAmount(bill.amount) }))
+        )
     );
 
     function addBillClick(): void {
@@ -65,17 +87,40 @@
     }
 </script>
 
+{#snippet fieldError(message: string | undefined)}
+    {#if message}
+        <p class="col-span-full text-sm text-red-500">{message}</p>
+    {/if}
+{/snippet}
+
 <Dialog.Root bind:open={cardOpen}>
     <Dialog.Trigger type="button" class={buttonVariants()}>New Card +</Dialog.Trigger>
     <Dialog.Content>
         <form
             method="POST"
             action="?/createCard"
-            use:enhance={() => {
+            use:enhance={({ cancel }) => {
+                const errors = validateCardForm(currentValues());
+                if (Object.keys(errors).length > 0) {
+                    fieldErrors = errors;
+                    submitError = 'Please fix the highlighted fields.';
+                    cancel();
+                    return;
+                }
+                fieldErrors = {};
+                submitError = '';
                 return async ({ result, update }) => {
                     await update({ reset: false });
                     if (result.type === 'success') {
                         cardOpen = false;
+                    } else if (result.type === 'failure') {
+                        const data = result.data as
+                            | { cardError?: string; cardFieldErrors?: CardFormErrors }
+                            | undefined;
+                        fieldErrors = data?.cardFieldErrors ?? {};
+                        submitError = data?.cardError ?? 'Something went wrong — try again.';
+                    } else {
+                        submitError = 'Something went wrong — try again.';
                     }
                 };
             }}
@@ -84,6 +129,14 @@
                 <Dialog.Title>New Paycheck!</Dialog.Title>
                 <Dialog.Description>Fill out the info below</Dialog.Description>
             </Dialog.Header>
+            {#if !paydaySettings}
+                <p class="text-sm text-red-500">
+                    Set your paydate first (the “Paydate” button) — new cards are dated from it.
+                </p>
+            {/if}
+            {#if submitError}
+                <p class="text-sm text-red-500">{submitError}</p>
+            {/if}
             <div class="grid gap-4 py-4">
                 <h2 class="font-bold">Basics</h2>
                 <div class="grid grid-cols-4 items-center gap-4">
@@ -102,10 +155,12 @@
                             </Select.Group>
                         </Select.Content>
                     </Select.Root>
+                    {@render fieldError(fieldErrors.month)}
                 </div>
                 <div class="grid grid-cols-4 items-center gap-4">
                     <Label for="payAmt" class="text-right">Pay Amount ($)</Label>
                     <Input id="payAmt" placeholder="Enter Amount" bind:value={payAmount} class="col-span-3 w-[180px]"/>
+                    {@render fieldError(fieldErrors.payAmount)}
                 </div>
                 <h2 class="font-bold">Reoccuring Bills</h2>
                 <div class="grid grid-cols-4 items-center gap-4">
@@ -113,6 +168,7 @@
                         <Label class="text-right">{bill.name}</Label>
                         <Input class="col-span-3 w-[180px]" bind:value={bill.amount} />
                     {/each}
+                    {@render fieldError(fieldErrors.reoccurBills)}
                 </div>
                 <h2 class="font-bold">Other Bills</h2>
                 {#if otherBills.length > 0}
@@ -126,6 +182,7 @@
                 {:else}
                     <h2>(None)</h2>
                 {/if}
+                {@render fieldError(fieldErrors.otherBills)}
                 <h2 class="font-bold">Savings?</h2>
                 <div class="flex space-x-5">
                     <RadioGroup.Root bind:value={savingsType} name="savingsType">
@@ -142,6 +199,8 @@
                   </RadioGroup.Root>
                   <Input placeholder="Enter Amount" bind:value={savingsAmount} class="col-span-3 w-[120px]"/>
                 </div>
+                {@render fieldError(fieldErrors.savingsType)}
+                {@render fieldError(fieldErrors.savingsAmount)}
             </div>
             <input type="hidden" name="payAmount" value={payAmount} />
             <input type="hidden" name="savingsAmount" value={savingsAmount} />
@@ -150,7 +209,7 @@
             <Dialog.Footer>
                 <div class="w-full flex justify-between">
                     <Button type="button" variant="secondary" onclick={addBillClick}>Add Bill</Button>
-                    <Button type="submit">Submit</Button>
+                    <Button type="submit" disabled={!paydaySettings}>Submit</Button>
                 </div>
             </Dialog.Footer>
         </form>

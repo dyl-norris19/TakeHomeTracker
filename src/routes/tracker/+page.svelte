@@ -26,7 +26,7 @@
         <div class="flex w-[65vw] justify-between space-x-8">
             <div class="flex flex-col items-start flex-1 occurance-container space-y-8">
                 {#if email}
-                    <AddCard recurringBills={data.recurringBills} />
+                    <AddCard recurringBills={data.recurringBills} paydaySettings={data.paydaySettings} />
                     <NewRecBill recurringBills={data.recurringBills} />
                     <Paydate paydaySettings={data.paydaySettings} />
                 {/if}

@@ -7,6 +7,7 @@ import { replaceRecurringBills } from '$lib/server/db/commands/recurring-bills';
 import { getCardsByUser } from '$lib/server/db/queries/cards';
 import { createCard, deleteCard } from '$lib/server/db/commands/cards';
 import { getFormString } from '$lib/server/form-data';
+import { parseAmount, validateBills, validateCardForm, type CardFormValues } from '$lib/validation';
 
 function getNextPaydate(paydate: Date, frequency: number): Date {
     const today = new Date();
@@ -98,8 +99,11 @@ export const actions: Actions = {
         const paydateSeconds = Number(formData.get('paydate'));
         const frequency = Number(formData.get('frequency'));
 
-        if (!paydateSeconds || Number.isNaN(paydateSeconds) || !frequency || Number.isNaN(frequency)) {
-            return fail(400, { paydateError: 'Pick a paydate and frequency.' });
+        if (!paydateSeconds || Number.isNaN(paydateSeconds)) {
+            return fail(400, { paydateError: 'Pick your paydate.' });
+        }
+        if (![1, 2, 4].includes(frequency)) {
+            return fail(400, { paydateError: 'Choose how often you get paid.' });
         }
 
         await upsertPaydaySettings(locals.user.id, new Date(paydateSeconds * 1000), frequency);
@@ -115,11 +119,12 @@ export const actions: Actions = {
         const formData = await request.formData();
         const bills = parseBills(formData.get('bills'));
 
-        if (!bills) {
-            return fail(400, { billsError: 'Invalid bills data.' });
+        const billsError = validateBills(bills, 'bills');
+        if (billsError) {
+            return fail(400, { billsError });
         }
 
-        await replaceRecurringBills(locals.user.id, bills);
+        await replaceRecurringBills(locals.user.id, bills!);
 
         return { billsSuccess: true };
     },
@@ -131,38 +136,35 @@ export const actions: Actions = {
 
         const paydaySettings = await getPaydaySettings(locals.user.id);
         if (!paydaySettings) {
-            return fail(400, { cardError: 'Set your paydate before adding a card.' });
+            return fail(400, {
+                cardError: 'Set your paydate first.'
+            });
         }
 
         const formData = await request.formData();
-        const month = getFormString(formData, 'month') ?? '';
-        const payAmount = Number(formData.get('payAmount'));
-        const savingsTypeRaw = getFormString(formData, 'savingsType') ?? '';
-        const savingsMethod = parseSavingsMethod(savingsTypeRaw);
-        const savingsAmount = Number(formData.get('savingsAmount'));
-        const reoccurBills = parseBills(formData.get('reoccurBills'));
-        const otherBills = parseBills(formData.get('otherBills'));
+        const values: CardFormValues = {
+            month: getFormString(formData, 'month')?.trim() ?? '',
+            payAmount: parseAmount(getFormString(formData, 'payAmount')),
+            savingsMethod: parseSavingsMethod(getFormString(formData, 'savingsType') ?? ''),
+            savingsAmount: parseAmount(getFormString(formData, 'savingsAmount')),
+            reoccurBills: parseBills(formData.get('reoccurBills')),
+            otherBills: parseBills(formData.get('otherBills'))
+        };
 
-        if (
-            !month ||
-            Number.isNaN(payAmount) ||
-            !savingsMethod ||
-            Number.isNaN(savingsAmount) ||
-            !reoccurBills ||
-            !otherBills
-        ) {
-            return fail(400, { cardError: 'Please fill out all fields correctly.' });
+        const cardFieldErrors = validateCardForm(values);
+        if (Object.keys(cardFieldErrors).length > 0) {
+            return fail(400, { cardError: 'Please fix the highlighted fields.', cardFieldErrors });
         }
 
         const payDate = getNextPaydate(paydaySettings.paydate, paydaySettings.frequency);
 
         await createCard(locals.user.id, {
-            month,
-            payAmount,
+            month: values.month,
+            payAmount: values.payAmount,
             payDate,
-            savings: { method: savingsMethod, amount: savingsAmount },
-            reoccurBills,
-            otherBills
+            savings: { method: values.savingsMethod!, amount: values.savingsAmount },
+            reoccurBills: values.reoccurBills!,
+            otherBills: values.otherBills!
         });
 
         return { cardSuccess: true };

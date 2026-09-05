@@ -3,13 +3,15 @@
     import { Button, buttonVariants } from "$lib/components/ui/button/index";
     import * as Dialog from "$lib/components/ui/dialog/index";
     import { enhance } from "$app/forms";
+    import { parseAmount, validateBills } from "$lib/validation";
 
     let { recurringBills }: { recurringBills: { name: string; amount: number }[] } = $props();
 
     let reoccurBills = $state<{ name: string; amount: string | number }[]>([]);
     let cardOpen = $state<boolean>(false);
+    let errorMsg = $state<string>("");
     let billsJson = $derived(
-        JSON.stringify(reoccurBills.map((bill) => ({ name: bill.name, amount: Number(bill.amount) })))
+        JSON.stringify(reoccurBills.map((bill) => ({ name: bill.name, amount: parseAmount(bill.amount) })))
     );
 
     let deleteMode = $state<boolean>(false);
@@ -21,8 +23,17 @@
             reoccurBills = recurringBills.map((bill) => ({ name: bill.name, amount: bill.amount }));
             deleteMode = false;
             selectedForDelete = [];
+            errorMsg = "";
         }
     });
+
+    function validate(): string {
+        const bills = reoccurBills.map((bill) => ({
+            name: bill.name,
+            amount: parseAmount(bill.amount)
+        }));
+        return validateBills(bills, "bills") ?? "";
+    }
 
     function addBillClick() {
         reoccurBills.push({
@@ -56,11 +67,23 @@
         <form
             method="POST"
             action="?/updateRecurringBills"
-            use:enhance={() => {
+            use:enhance={({ cancel }) => {
+                const problem = validate();
+                if (problem) {
+                    errorMsg = problem;
+                    cancel();
+                    return;
+                }
+                errorMsg = '';
                 return async ({ result, update }) => {
                     await update({ reset: false });
                     if (result.type === 'success') {
                         cardOpen = false;
+                    } else if (result.type === 'failure') {
+                        const data = result.data as { billsError?: string } | undefined;
+                        errorMsg = data?.billsError ?? 'Something went wrong — try again.';
+                    } else {
+                        errorMsg = 'Something went wrong — try again.';
                     }
                 };
             }}
@@ -69,6 +92,9 @@
                 <Dialog.Title>Edit Reoccuring Bills</Dialog.Title>
                 <Dialog.Description>Edit your reoccuring bills below</Dialog.Description>
             </Dialog.Header>
+            {#if errorMsg}
+                <p class="text-sm text-red-500">{errorMsg}</p>
+            {/if}
             <div class="grid gap-4 py-4">
                 <h2 class="font-bold">Reoccuring Bills</h2>
                 <div class="grid grid-cols-4 items-center gap-4">
