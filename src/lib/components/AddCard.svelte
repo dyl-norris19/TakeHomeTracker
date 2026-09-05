@@ -13,6 +13,7 @@
         type CardFormErrors,
         type CardFormValues
     } from "$lib/validation";
+    import BillListEditor from "$lib/components/BillListEditor.svelte";
 
     let {
         recurringBills,
@@ -32,6 +33,7 @@
     let otherBills = $state<{ name: string; amount: string | number }[]>([]);
 
     let cardOpen = $state<boolean>(false);
+    let otherBillsEditing = $state<boolean>(false);
 
     let fieldErrors = $state<CardFormErrors>({});
     let submitError = $state<string>("");
@@ -46,6 +48,7 @@
             otherBills = [];
             fieldErrors = {};
             submitError = "";
+            otherBillsEditing = false;
         }
     });
 
@@ -78,13 +81,6 @@
         )
     );
 
-    function addBillClick(): void {
-        otherBills.push({ name: "", amount: "" });
-    }
-
-    function deleteBillClick(): void {
-        otherBills.pop();
-    }
 </script>
 
 {#snippet fieldError(message: string | undefined)}
@@ -171,17 +167,7 @@
                     {@render fieldError(fieldErrors.reoccurBills)}
                 </div>
                 <h2 class="font-bold">Other Bills</h2>
-                {#if otherBills.length > 0}
-                    <Button type="button" class="w-[100px]" variant="destructive" onclick={deleteBillClick}>Delete Bill</Button>
-                    <div class="grid grid-cols-5 items-center gap-4">
-                        {#each otherBills as bill (bill)}
-                            <Input placeholder="Bill Name" bind:value={bill.name} class="col-span-2"/>
-                            <Input placeholder="Enter Amount" bind:value={bill.amount} class="col-span-2 w-[180px]" />
-                        {/each}
-                    </div>
-                {:else}
-                    <h2>(None)</h2>
-                {/if}
+                <BillListEditor bind:bills={otherBills} bind:editing={otherBillsEditing} />
                 {@render fieldError(fieldErrors.otherBills)}
                 <h2 class="font-bold">Savings?</h2>
                 <div class="flex space-x-5">
@@ -207,10 +193,7 @@
             <input type="hidden" name="reoccurBills" value={reoccurBillsJson} />
             <input type="hidden" name="otherBills" value={otherBillsJson} />
             <Dialog.Footer>
-                <div class="w-full flex justify-between">
-                    <Button type="button" variant="secondary" onclick={addBillClick}>Add Bill</Button>
-                    <Button type="submit" disabled={!paydaySettings}>Submit</Button>
-                </div>
+                <Button type="submit" disabled={!paydaySettings || otherBillsEditing}>Submit</Button>
             </Dialog.Footer>
         </form>
     </Dialog.Content>
