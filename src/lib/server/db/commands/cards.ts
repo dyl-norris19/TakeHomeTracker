@@ -7,6 +7,8 @@ export async function createCard(
     userId: number,
     data: {
         month: string;
+        year: number;
+        paycheckNumber: number;
         payAmount: number;
         payDate: Date;
         savings: CardSavings;
@@ -19,6 +21,8 @@ export async function createCard(
         .values({
             userId,
             month: data.month,
+            year: data.year,
+            paycheckNumber: data.paycheckNumber,
             payAmount: data.payAmount,
             payDate: data.payDate,
             savingsMethod: data.savings.method,

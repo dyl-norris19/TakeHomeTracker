@@ -8,6 +8,8 @@ export type CardSavings = { method: 'percent' | 'flat'; amount: number };
 export type Card = {
     id: number;
     month: string;
+    year: number;
+    paycheckNumber: number;
     payAmount: number;
     payDate: Date;
     savings: CardSavings;
@@ -21,6 +23,8 @@ export async function getCardsByUser(userId: number): Promise<Card[]> {
     return rows.map((row) => ({
         id: row.id,
         month: row.month,
+        year: row.year,
+        paycheckNumber: row.paycheckNumber,
         payAmount: row.payAmount,
         payDate: row.payDate,
         savings: { method: row.savingsMethod, amount: row.savingsAmount },

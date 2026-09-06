@@ -7,39 +7,8 @@ import { replaceRecurringBills } from '$lib/server/db/commands/recurring-bills';
 import { getCardsByUser } from '$lib/server/db/queries/cards';
 import { createCard, deleteCard } from '$lib/server/db/commands/cards';
 import { getFormString } from '$lib/server/form-data';
-import { parseAmount, validateBills, validateCardForm, type CardFormValues } from '$lib/validation';
-
-function getNextPaydate(paydate: Date, frequency: number): Date {
-    const today = new Date();
-
-    if (frequency === 1) {
-        let year = paydate.getFullYear();
-        let month = paydate.getMonth();
-        const day = paydate.getDate();
-
-        while (true) {
-            const nextDate = new Date(year, month, day);
-            if (nextDate > today) {
-                return nextDate;
-            }
-            month++;
-            if (month > 11) {
-                month = 0;
-                year++;
-            }
-        }
-    }
-
-    const intervalDays = frequency === 2 ? 14 : 7;
-    const intervalMs = intervalDays * 24 * 60 * 60 * 1000;
-
-    let nextDate = new Date(paydate);
-    while (nextDate <= today) {
-        nextDate = new Date(nextDate.getTime() + intervalMs);
-    }
-
-    return nextDate;
-}
+import { MONTHS, parseAmount, validateBills, validateCardForm, type CardFormValues } from '$lib/validation';
+import { isMonthly, parseMonthValue, resolvePaydate } from '$lib/paydates';
 
 function parseSavingsMethod(raw: string): 'percent' | 'flat' | null {
     if (raw === '%') {
@@ -142,8 +111,12 @@ export const actions: Actions = {
         }
 
         const formData = await request.formData();
+        const parsedMonth = parseMonthValue(getFormString(formData, 'month') ?? '');
+        const monthly = isMonthly(paydaySettings);
         const values: CardFormValues = {
-            month: getFormString(formData, 'month')?.trim() ?? '',
+            year: parsedMonth?.year ?? Number.NaN,
+            monthIndex: parsedMonth?.monthIndex ?? Number.NaN,
+            paycheckNumber: monthly ? 1 : Number(getFormString(formData, 'paycheckNumber')),
             payAmount: parseAmount(getFormString(formData, 'payAmount')),
             savingsMethod: parseSavingsMethod(getFormString(formData, 'savingsType') ?? ''),
             savingsAmount: parseAmount(getFormString(formData, 'savingsAmount')),
@@ -156,10 +129,40 @@ export const actions: Actions = {
             return fail(400, { cardError: 'Please fix the highlighted fields.', cardFieldErrors });
         }
 
-        const payDate = getNextPaydate(paydaySettings.paydate, paydaySettings.frequency);
+        const payDate = resolvePaydate(
+            paydaySettings,
+            values.year,
+            values.monthIndex,
+            values.paycheckNumber
+        );
+        if (!payDate) {
+            return fail(400, {
+                cardError: 'That paycheck doesn’t exist for the month you picked.',
+                cardFieldErrors: { paycheckNumber: 'Pick a valid paycheck for this month.' }
+            });
+        }
+
+        const monthName = MONTHS[values.monthIndex];
+        const existingCards = await getCardsByUser(locals.user.id);
+        const isDuplicate = existingCards.some(
+            (card) =>
+                card.year === values.year &&
+                card.month === monthName &&
+                card.paycheckNumber === values.paycheckNumber
+        );
+        if (isDuplicate && getFormString(formData, 'confirmDuplicate') !== 'true') {
+            return fail(409, {
+                cardError: monthly
+                    ? `You already have a card for ${monthName} ${values.year}. Submit again to add another.`
+                    : `You already have a card for ${monthName} ${values.year}, paycheck ${values.paycheckNumber}. Submit again to add another.`,
+                cardDuplicate: true
+            });
+        }
 
         await createCard(locals.user.id, {
-            month: values.month,
+            month: monthName,
+            year: values.year,
+            paycheckNumber: values.paycheckNumber,
             payAmount: values.payAmount,
             payDate,
             savings: { method: values.savingsMethod!, amount: values.savingsAmount },

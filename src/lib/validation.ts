@@ -25,7 +25,9 @@ export type SavingsMethod = 'percent' | 'flat';
 export type CardBillInput = { name: string; amount: number };
 
 export type CardFormValues = {
-	month: string;
+	year: number;
+	monthIndex: number;
+	paycheckNumber: number;
 	payAmount: number;
 	savingsMethod: SavingsMethod | null;
 	savingsAmount: number;
@@ -35,6 +37,7 @@ export type CardFormValues = {
 
 export type CardFormField =
 	| 'month'
+	| 'paycheckNumber'
 	| 'payAmount'
 	| 'savingsType'
 	| 'savingsAmount'
@@ -88,10 +91,17 @@ export function validateBills(bills: CardBillInput[] | null, label: string): str
 export function validateCardForm(values: CardFormValues): CardFormErrors {
 	const errors: CardFormErrors = {};
 
-	if (!values.month) {
+	if (
+		!Number.isInteger(values.year) ||
+		!Number.isInteger(values.monthIndex) ||
+		values.monthIndex < 0 ||
+		values.monthIndex > 11
+	) {
 		errors.month = 'Pick a month.';
-	} else if (!MONTHS.includes(values.month as (typeof MONTHS)[number])) {
-		errors.month = 'Pick a valid month.';
+	}
+
+	if (!Number.isInteger(values.paycheckNumber) || values.paycheckNumber < 1) {
+		errors.paycheckNumber = 'Pick which paycheck this is.';
 	}
 
 	if (!Number.isFinite(values.payAmount)) {

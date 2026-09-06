@@ -10,13 +10,10 @@
 
     let email = $derived(data.email);
 
-    const monthOrder: string[] = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    ];
+    let showPaycheckNumber = $derived(!!data.paydaySettings && data.paydaySettings.frequency !== 1);
 
     let userCards = $derived(
-        [...data.cards].sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month))
+        [...data.cards].sort((a, b) => a.payDate.getTime() - b.payDate.getTime())
     );
 </script>
 
@@ -36,7 +33,7 @@
             </div> -->
             <div class="flex-[2] occurrence-container space-y-4 overflow-y-auto max-h-[90vh]">
                 {#each userCards as card (card.id)}
-                    <Occurrance {card} />
+                    <Occurrance {card} {showPaycheckNumber} />
                 {/each}
             </div>
         </div>

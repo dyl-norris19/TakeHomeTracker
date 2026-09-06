@@ -7,12 +7,19 @@
     import * as Dialog from "$lib/components/ui/dialog/index";
     import { enhance } from "$app/forms";
     import {
-        MONTHS,
         parseAmount,
         validateCardForm,
         type CardFormErrors,
         type CardFormValues
     } from "$lib/validation";
+    import {
+        isMonthly,
+        monthOptions,
+        nearestPaycheck,
+        parseMonthValue,
+        paycheckCountInMonth,
+        resolvePaydate
+    } from "$lib/paydates";
     import BillListEditor from "$lib/components/BillListEditor.svelte";
 
     let {
@@ -23,9 +30,48 @@
         paydaySettings?: { paydate: Date; frequency: number };
     } = $props();
 
-    const months = MONTHS.map((month) => ({ value: month, label: month }));
+    const months = monthOptions();
+    const dateFmt = new Intl.DateTimeFormat("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+    });
+
+    let monthly = $derived(paydaySettings ? isMonthly(paydaySettings) : false);
 
     let selectedMonth = $state<string>("");
+    let paycheckNumber = $state<string>("1");
+    let confirmDuplicate = $state<boolean>(false);
+
+    let parsedMonth = $derived(parseMonthValue(selectedMonth));
+    let paycheckCount = $derived(
+        paydaySettings && parsedMonth
+            ? paycheckCountInMonth(paydaySettings, parsedMonth.year, parsedMonth.monthIndex)
+            : 0
+    );
+    let paycheckChoices = $derived(Array.from({ length: paycheckCount }, (_, i) => i + 1));
+    let resolvedPaydate = $derived(
+        paydaySettings && parsedMonth
+            ? resolvePaydate(
+                  paydaySettings,
+                  parsedMonth.year,
+                  parsedMonth.monthIndex,
+                  monthly ? 1 : Number(paycheckNumber)
+              )
+            : null
+    );
+
+    // On any change to the chosen month or paycheck: drop a pending duplicate
+    // confirmation, and clamp a paycheck number the new month can't satisfy.
+    $effect(() => {
+        const selection = { month: selectedMonth, number: paycheckNumber };
+        confirmDuplicate = false;
+        if (paycheckCount > 0 && Number(selection.number) > paycheckCount) {
+            paycheckNumber = "1";
+        }
+    });
+
     let payAmount = $state<string | number>("");
     let savingsType = $state<string>("");
     let savingsAmount = $state<string | number>("");
@@ -40,7 +86,11 @@
 
     $effect(() => {
         if (!cardOpen) {
-            selectedMonth = "";
+            // Pre-fill to the paycheck closest to today; the user can still change it.
+            const nearest = paydaySettings ? nearestPaycheck(paydaySettings) : null;
+            selectedMonth = nearest?.value ?? "";
+            paycheckNumber = nearest ? String(nearest.paycheckNumber) : "1";
+            confirmDuplicate = false;
             payAmount = "";
             savingsType = "";
             savingsAmount = "";
@@ -54,7 +104,9 @@
 
     function currentValues(): CardFormValues {
         return {
-            month: selectedMonth,
+            year: parsedMonth?.year ?? Number.NaN,
+            monthIndex: parsedMonth?.monthIndex ?? Number.NaN,
+            paycheckNumber: monthly ? 1 : Number(paycheckNumber),
             payAmount: parseAmount(payAmount),
             savingsMethod:
                 savingsType === "%" ? "percent" : savingsType === "flat" ? "flat" : null,
@@ -111,10 +163,17 @@
                         cardOpen = false;
                     } else if (result.type === 'failure') {
                         const data = result.data as
-                            | { cardError?: string; cardFieldErrors?: CardFormErrors }
+                            | {
+                                  cardError?: string;
+                                  cardFieldErrors?: CardFormErrors;
+                                  cardDuplicate?: boolean;
+                              }
                             | undefined;
                         fieldErrors = data?.cardFieldErrors ?? {};
                         submitError = data?.cardError ?? 'Something went wrong — try again.';
+                        if (data?.cardDuplicate) {
+                            confirmDuplicate = true;
+                        }
                     } else {
                         submitError = 'Something went wrong — try again.';
                     }
@@ -153,6 +212,35 @@
                     </Select.Root>
                     {@render fieldError(fieldErrors.month)}
                 </div>
+                {#if !monthly}
+                    <div class="grid grid-cols-4 items-center gap-4">
+                        <Label for="paycheckNumber" class="text-right">Paycheck #</Label>
+                        <Select.Root type="single" bind:value={paycheckNumber} name="paycheckNumber">
+                            <Select.Trigger class="w-[180px]">
+                                {paycheckNumber ? `Paycheck ${paycheckNumber}` : "Select"}
+                            </Select.Trigger>
+                            <Select.Content portalProps={{ disabled: true }}>
+                                <Select.Group>
+                                    {#each paycheckChoices as n (n)}
+                                        <Select.Item value={String(n)} label={`Paycheck ${n}`}>
+                                            Paycheck {n}
+                                        </Select.Item>
+                                    {/each}
+                                </Select.Group>
+                            </Select.Content>
+                        </Select.Root>
+                        {@render fieldError(fieldErrors.paycheckNumber)}
+                    </div>
+                {/if}
+                {#if resolvedPaydate}
+                    <p class="col-span-full text-sm text-muted-foreground">
+                        Pays {dateFmt.format(resolvedPaydate)}
+                    </p>
+                {:else if selectedMonth}
+                    <p class="col-span-full text-sm text-red-500">
+                        That month doesn’t have a paycheck {paycheckNumber}.
+                    </p>
+                {/if}
                 <div class="grid grid-cols-4 items-center gap-4">
                     <Label for="payAmt" class="text-right">Pay Amount ($)</Label>
                     <Input id="payAmt" placeholder="Enter Amount" bind:value={payAmount} class="col-span-3 w-[180px]"/>
@@ -192,8 +280,9 @@
             <input type="hidden" name="savingsAmount" value={savingsAmount} />
             <input type="hidden" name="reoccurBills" value={reoccurBillsJson} />
             <input type="hidden" name="otherBills" value={otherBillsJson} />
+            <input type="hidden" name="confirmDuplicate" value={confirmDuplicate} />
             <Dialog.Footer>
-                <Button type="submit" disabled={!paydaySettings || otherBillsEditing}>Submit</Button>
+                <Button type="submit" disabled={!paydaySettings || otherBillsEditing || !resolvedPaydate}>Submit</Button>
             </Dialog.Footer>
         </form>
     </Dialog.Content>

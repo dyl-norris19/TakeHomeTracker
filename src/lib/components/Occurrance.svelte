@@ -6,7 +6,13 @@
     import { enhance } from "$app/forms";
     import { cn } from "$lib/utils.js";
 
-    let { card }= $props();
+    let { card, showPaycheckNumber = false } = $props();
+
+    let title = $derived(
+        showPaycheckNumber
+            ? `${card.month} ${card.year} · Paycheck ${card.paycheckNumber}`
+            : `${card.month} ${card.year}`
+    );
 
     let deleteOpen = $state<boolean>(false);
 
@@ -52,7 +58,7 @@
     <Card.Root class="max-w-[50vw] w-full mx-auto">
         <Card.Header>
             <Card.Title class="flex justify-between items-center">
-                <p>{card.month}</p>
+                <p>{title}</p>
                 <div class="flex items-center gap-3">
                     <p>Pay: ${card.payAmount}</p>
                     <Dialog.Root bind:open={deleteOpen}>
