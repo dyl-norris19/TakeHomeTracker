@@ -2,22 +2,28 @@
     import { Button, buttonVariants } from "$lib/components/ui/button/index";
     import * as Dialog from "$lib/components/ui/dialog/index";
     import { enhance } from "$app/forms";
-    import { parseAmount, validateBills } from "$lib/validation";
+    import { validateBills } from "$lib/validation";
+    import { centsToInput, parseToCents } from "$lib/money";
     import BillListEditor from "$lib/components/BillListEditor.svelte";
 
-    let { recurringBills }: { recurringBills: { name: string; amount: number }[] } = $props();
+    let { recurringBills }: { recurringBills: { name: string; amountCents: number }[] } = $props();
 
     let reoccurBills = $state<{ name: string; amount: string | number }[]>([]);
     let cardOpen = $state<boolean>(false);
     let editing = $state<boolean>(false);
     let errorMsg = $state<string>("");
     let billsJson = $derived(
-        JSON.stringify(reoccurBills.map((bill) => ({ name: bill.name, amount: parseAmount(bill.amount) })))
+        JSON.stringify(
+            reoccurBills.map((bill) => ({ name: bill.name, amountCents: parseToCents(bill.amount) }))
+        )
     );
 
     $effect(() => {
         if (!cardOpen) {
-            reoccurBills = recurringBills.map((bill) => ({ name: bill.name, amount: bill.amount }));
+            reoccurBills = recurringBills.map((bill) => ({
+                name: bill.name,
+                amount: centsToInput(bill.amountCents)
+            }));
             editing = false;
             errorMsg = "";
         }
@@ -26,7 +32,7 @@
     function validate(): string {
         const bills = reoccurBills.map((bill) => ({
             name: bill.name,
-            amount: parseAmount(bill.amount)
+            amountCents: parseToCents(bill.amount)
         }));
         return validateBills(bills, "bills") ?? "";
     }

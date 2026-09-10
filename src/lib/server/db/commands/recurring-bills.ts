@@ -4,7 +4,7 @@ import { recurringBills } from '$lib/server/db/schema/recurring-bills';
 
 export async function replaceRecurringBills(
     userId: number,
-    bills: { name: string; amount: number }[]
+    bills: { name: string; amountCents: number }[]
 ) {
     return db.transaction((tx) => {
         tx.delete(recurringBills).where(eq(recurringBills.userId, userId)).run();
@@ -15,7 +15,7 @@ export async function replaceRecurringBills(
 
         return tx
             .insert(recurringBills)
-            .values(bills.map((bill) => ({ userId, name: bill.name, amount: bill.amount })))
+            .values(bills.map((bill) => ({ userId, name: bill.name, amountCents: bill.amountCents })))
             .returning()
             .all();
     });

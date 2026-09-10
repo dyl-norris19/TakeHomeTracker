@@ -22,15 +22,18 @@ export const MONTHS = [
 
 export type SavingsMethod = 'percent' | 'flat';
 
-export type CardBillInput = { name: string; amount: number };
+/** A bill as it's stored/computed: an integer-cents amount. */
+export type CardBillInput = { name: string; amountCents: number };
 
 export type CardFormValues = {
 	year: number;
 	monthIndex: number;
 	paycheckNumber: number;
-	payAmount: number;
+	payAmountCents: number;
 	savingsMethod: SavingsMethod | null;
-	savingsAmount: number;
+	// Cents when the method is flat, basis points (hundredths of a percent) when
+	// it's percent. Both are just a user number scaled by 100.
+	savingsValue: number;
 	reoccurBills: CardBillInput[] | null;
 	otherBills: CardBillInput[] | null;
 };
@@ -47,22 +50,8 @@ export type CardFormField =
 export type CardFormErrors = Partial<Record<CardFormField, string>>;
 
 /**
- * Parses a user-entered amount. Blank / whitespace-only becomes NaN so it reads
- * as "missing" rather than silently 0; anything non-numeric is NaN too.
- */
-export function parseAmount(raw: unknown): number {
-	if (typeof raw === 'number') {
-		return raw;
-	}
-	if (typeof raw !== 'string' || raw.trim() === '') {
-		return Number.NaN;
-	}
-	return Number(raw);
-}
-
-/**
- * Validates a list of bills (name + amount). Returns the first problem found, or
- * null when every bill is fine.
+ * Validates a list of bills (name + integer-cents amount). Returns the first
+ * problem found, or null when every bill is fine.
  */
 export function validateBills(bills: CardBillInput[] | null, label: string): string | null {
 	if (bills === null) {
@@ -74,10 +63,10 @@ export function validateBills(bills: CardBillInput[] | null, label: string): str
 		if (!name) {
 			return `Give every ${singular} a name.`;
 		}
-		if (!Number.isFinite(bill.amount)) {
+		if (!Number.isInteger(bill.amountCents)) {
 			return `Enter an amount for "${name}".`;
 		}
-		if (bill.amount < 0) {
+		if (bill.amountCents < 0) {
 			return `"${name}" can't be a negative amount.`;
 		}
 	}
@@ -104,9 +93,9 @@ export function validateCardForm(values: CardFormValues): CardFormErrors {
 		errors.paycheckNumber = 'Pick which paycheck this is.';
 	}
 
-	if (!Number.isFinite(values.payAmount)) {
+	if (!Number.isInteger(values.payAmountCents)) {
 		errors.payAmount = 'Enter your pay amount.';
-	} else if (values.payAmount <= 0) {
+	} else if (values.payAmountCents <= 0) {
 		errors.payAmount = 'Pay amount must be greater than 0.';
 	}
 
@@ -114,11 +103,11 @@ export function validateCardForm(values: CardFormValues): CardFormErrors {
 		errors.savingsType = 'Choose how you save.';
 	}
 
-	if (!Number.isFinite(values.savingsAmount)) {
-		errors.savingsAmount = "Enter a savings amount.";
-	} else if (values.savingsAmount < 0) {
+	if (!Number.isInteger(values.savingsValue)) {
+		errors.savingsAmount = 'Enter a savings amount.';
+	} else if (values.savingsValue < 0) {
 		errors.savingsAmount = "Savings amount can't be negative.";
-	} else if (values.savingsMethod === 'percent' && values.savingsAmount > 100) {
+	} else if (values.savingsMethod === 'percent' && values.savingsValue > 10000) {
 		errors.savingsAmount = "A savings percentage can't be over 100.";
 	}
 

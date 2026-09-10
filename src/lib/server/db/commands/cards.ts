@@ -9,7 +9,7 @@ export async function createCard(
         month: string;
         year: number;
         paycheckNumber: number;
-        payAmount: number;
+        payAmountCents: number;
         payDate: Date;
         savings: CardSavings;
         reoccurBills: CardBill[];
@@ -23,10 +23,11 @@ export async function createCard(
             month: data.month,
             year: data.year,
             paycheckNumber: data.paycheckNumber,
-            payAmount: data.payAmount,
+            payAmountCents: data.payAmountCents,
             payDate: data.payDate,
             savingsMethod: data.savings.method,
-            savingsAmount: data.savings.amount,
+            savingsFlatCents: data.savings.method === 'flat' ? data.savings.flatCents : null,
+            savingsBasisPoints: data.savings.method === 'percent' ? data.savings.basisPoints : null,
             recurringBillsSnapshot: JSON.stringify(data.reoccurBills),
             otherBills: JSON.stringify(data.otherBills)
         })

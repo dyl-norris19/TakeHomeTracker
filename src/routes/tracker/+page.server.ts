@@ -7,7 +7,8 @@ import { replaceRecurringBills } from '$lib/server/db/commands/recurring-bills';
 import { getCardsByUser } from '$lib/server/db/queries/cards';
 import { createCard, deleteCard } from '$lib/server/db/commands/cards';
 import { getFormString } from '$lib/server/form-data';
-import { MONTHS, parseAmount, validateBills, validateCardForm, type CardFormValues } from '$lib/validation';
+import { MONTHS, validateBills, validateCardForm, type CardFormValues } from '$lib/validation';
+import { parsePercentToBasisPoints, parseToCents } from '$lib/money';
 import { isMonthly, parseMonthValue, resolvePaydate } from '$lib/paydates';
 
 function parseSavingsMethod(raw: string): 'percent' | 'flat' | null {
@@ -20,7 +21,7 @@ function parseSavingsMethod(raw: string): 'percent' | 'flat' | null {
     return null;
 }
 
-function parseBills(raw: FormDataEntryValue | null): { name: string; amount: number }[] | null {
+function parseBills(raw: FormDataEntryValue | null): { name: string; amountCents: number }[] | null {
     if (typeof raw !== 'string') {
         return null;
     }
@@ -38,11 +39,10 @@ function parseBills(raw: FormDataEntryValue | null): { name: string; amount: num
             (bill) =>
                 bill &&
                 typeof bill.name === 'string' &&
-                typeof bill.amount === 'number' &&
-                !Number.isNaN(bill.amount)
+                Number.isInteger(bill.amountCents)
         );
 
-    return isValid ? (bills as { name: string; amount: number }[]) : null;
+    return isValid ? (bills as { name: string; amountCents: number }[]) : null;
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -113,13 +113,18 @@ export const actions: Actions = {
         const formData = await request.formData();
         const parsedMonth = parseMonthValue(getFormString(formData, 'month') ?? '');
         const monthly = isMonthly(paydaySettings);
+        const savingsMethod = parseSavingsMethod(getFormString(formData, 'savingsType') ?? '');
+        const rawSavings = getFormString(formData, 'savingsAmount');
         const values: CardFormValues = {
             year: parsedMonth?.year ?? Number.NaN,
             monthIndex: parsedMonth?.monthIndex ?? Number.NaN,
             paycheckNumber: monthly ? 1 : Number(getFormString(formData, 'paycheckNumber')),
-            payAmount: parseAmount(getFormString(formData, 'payAmount')),
-            savingsMethod: parseSavingsMethod(getFormString(formData, 'savingsType') ?? ''),
-            savingsAmount: parseAmount(getFormString(formData, 'savingsAmount')),
+            payAmountCents: parseToCents(getFormString(formData, 'payAmount')),
+            savingsMethod,
+            savingsValue:
+                savingsMethod === 'percent'
+                    ? parsePercentToBasisPoints(rawSavings)
+                    : parseToCents(rawSavings),
             reoccurBills: parseBills(formData.get('reoccurBills')),
             otherBills: parseBills(formData.get('otherBills'))
         };
@@ -163,9 +168,12 @@ export const actions: Actions = {
             month: monthName,
             year: values.year,
             paycheckNumber: values.paycheckNumber,
-            payAmount: values.payAmount,
+            payAmountCents: values.payAmountCents,
             payDate,
-            savings: { method: values.savingsMethod!, amount: values.savingsAmount },
+            savings:
+                values.savingsMethod === 'percent'
+                    ? { method: 'percent', basisPoints: values.savingsValue }
+                    : { method: 'flat', flatCents: values.savingsValue },
             reoccurBills: values.reoccurBills!,
             otherBills: values.otherBills!
         });

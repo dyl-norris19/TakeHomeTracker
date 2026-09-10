@@ -7,11 +7,11 @@
     import * as Dialog from "$lib/components/ui/dialog/index";
     import { enhance } from "$app/forms";
     import {
-        parseAmount,
         validateCardForm,
         type CardFormErrors,
         type CardFormValues
     } from "$lib/validation";
+    import { centsToInput, parsePercentToBasisPoints, parseToCents } from "$lib/money";
     import {
         isMonthly,
         monthOptions,
@@ -26,7 +26,7 @@
         recurringBills,
         paydaySettings
     }: {
-        recurringBills: { name: string; amount: number }[];
+        recurringBills: { name: string; amountCents: number }[];
         paydaySettings?: { paydate: Date; frequency: number };
     } = $props();
 
@@ -94,7 +94,10 @@
             payAmount = "";
             savingsType = "";
             savingsAmount = "";
-            reoccurBills = recurringBills.map((bill) => ({ name: bill.name, amount: bill.amount }));
+            reoccurBills = recurringBills.map((bill) => ({
+                name: bill.name,
+                amount: centsToInput(bill.amountCents)
+            }));
             otherBills = [];
             fieldErrors = {};
             submitError = "";
@@ -102,34 +105,40 @@
         }
     });
 
+    let savingsMethod = $derived<"percent" | "flat" | null>(
+        savingsType === "%" ? "percent" : savingsType === "flat" ? "flat" : null
+    );
+
     function currentValues(): CardFormValues {
         return {
             year: parsedMonth?.year ?? Number.NaN,
             monthIndex: parsedMonth?.monthIndex ?? Number.NaN,
             paycheckNumber: monthly ? 1 : Number(paycheckNumber),
-            payAmount: parseAmount(payAmount),
-            savingsMethod:
-                savingsType === "%" ? "percent" : savingsType === "flat" ? "flat" : null,
-            savingsAmount: parseAmount(savingsAmount),
+            payAmountCents: parseToCents(payAmount),
+            savingsMethod,
+            savingsValue:
+                savingsMethod === "percent"
+                    ? parsePercentToBasisPoints(savingsAmount)
+                    : parseToCents(savingsAmount),
             reoccurBills: reoccurBills.map((bill) => ({
                 name: bill.name,
-                amount: parseAmount(bill.amount)
+                amountCents: parseToCents(bill.amount)
             })),
             otherBills: otherBills.map((bill) => ({
                 name: bill.name,
-                amount: parseAmount(bill.amount)
+                amountCents: parseToCents(bill.amount)
             }))
         };
     }
 
     let reoccurBillsJson = $derived(
         JSON.stringify(
-            reoccurBills.map((bill) => ({ name: bill.name, amount: parseAmount(bill.amount) }))
+            reoccurBills.map((bill) => ({ name: bill.name, amountCents: parseToCents(bill.amount) }))
         )
     );
     let otherBillsJson = $derived(
         JSON.stringify(
-            otherBills.map((bill) => ({ name: bill.name, amount: parseAmount(bill.amount) }))
+            otherBills.map((bill) => ({ name: bill.name, amountCents: parseToCents(bill.amount) }))
         )
     );
 

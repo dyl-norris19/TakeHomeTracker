@@ -5,6 +5,7 @@
     import Trash2 from "@lucide/svelte/icons/trash-2";
     import { enhance } from "$app/forms";
     import { cn } from "$lib/utils.js";
+    import { formatCents, percentOfCents } from "$lib/money";
 
     let { card, showPaycheckNumber = false } = $props();
 
@@ -16,20 +17,24 @@
 
     let deleteOpen = $state<boolean>(false);
 
-    function calculateSavings(): number {
-        if (card.savings.method === "percent")
-            return Number((card.payAmount * (card.savings.amount * 0.01)).toFixed(2));
-        else
-            return card.savings.amount
+    // All money is integer cents, so these sums and differences are exact — no
+    // floating-point drift. The only rounding is inside percentOfCents.
+    function savingsCents(): number {
+        return card.savings.method === "percent"
+            ? percentOfCents(card.payAmountCents, card.savings.basisPoints)
+            : card.savings.flatCents;
     }
 
-    // console.log(card);
-    function calculateTakeHome(): number {
-        const reoccurBillsTotal: number = card.reoccurBills.reduce((sum: number, bill: { amount: number }) => sum + bill.amount, 0);
-        const otherBillsTotal:number = card.otherBills.reduce((sum:number, bill: { amount: number }) => sum + bill.amount, 0);
-        const savings: number = calculateSavings();
-
-        return card.payAmount - reoccurBillsTotal - otherBillsTotal - savings;
+    function takeHomeCents(): number {
+        const reoccurTotal: number = card.reoccurBills.reduce(
+            (sum: number, bill: { amountCents: number }) => sum + bill.amountCents,
+            0
+        );
+        const otherTotal: number = card.otherBills.reduce(
+            (sum: number, bill: { amountCents: number }) => sum + bill.amountCents,
+            0
+        );
+        return card.payAmountCents - reoccurTotal - otherTotal - savingsCents();
     }
 
     function secondsToDate(): string {
@@ -60,7 +65,7 @@
             <Card.Title class="flex justify-between items-center">
                 <p>{title}</p>
                 <div class="flex items-center gap-3">
-                    <p>Pay: ${card.payAmount}</p>
+                    <p>Pay: {formatCents(card.payAmountCents)}</p>
                     <Dialog.Root bind:open={deleteOpen}>
                         <Dialog.Trigger
                             type="button"
@@ -107,15 +112,15 @@
         </Card.Header>
         <Card.Content>
             {#each card.reoccurBills as bill, index (bill.name + index)}
-                <p>{bill.name}: ${bill.amount}</p>
+                <p>{bill.name}: {formatCents(bill.amountCents)}</p>
             {/each}
             {#each card.otherBills as bill, index (bill.name + index)}
-                <p>{bill.name}: ${bill.amount}</p>
+                <p>{bill.name}: {formatCents(bill.amountCents)}</p>
             {/each}
         </Card.Content>
         <Card.Footer class="flex justify-between">
-            <p>Savings: ${calculateSavings()}</p>
-            <p>Take Home: ${calculateTakeHome()}</p>
+            <p>Savings: {formatCents(savingsCents())}</p>
+            <p>Take Home: {formatCents(takeHomeCents())}</p>
         </Card.Footer>
     </Card.Root>
 </div>
