@@ -10,7 +10,7 @@
     let { form }: { form: ActionData } = $props();
 </script>
 
-<div class="flex h-screen w-full items-center justify-center px-4">
+<div class="flex h-full w-full items-center justify-center px-4">
     <Card.Root class="mx-auto max-w-sm">
         <Card.Header>
             <Card.Title class="text-xl">Sign Up</Card.Title>

@@ -28,11 +28,17 @@
 
 <svelte:head><link rel="icon" href={yahoo} /></svelte:head>
 
-<Navbar>
-    {#if data.user}
-        {@render loggedInCorner()}
-    {:else}
-        {@render loggedOutCorner()}
-    {/if}
-</Navbar>
-{@render children()}
+<!-- Navbar keeps its natural height; the content slot below gets exactly
+     "one screen minus the navbar" via flex-1 -->
+<div class="flex h-screen flex-col overflow-hidden">
+    <Navbar>
+        {#if data.user}
+            {@render loggedInCorner()}
+        {:else}
+            {@render loggedOutCorner()}
+        {/if}
+    </Navbar>
+    <div class="min-h-0 flex-1 overflow-y-auto">
+        {@render children()}
+    </div>
+</div>

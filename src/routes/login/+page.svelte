@@ -5,6 +5,6 @@
     let { form }: { form: ActionData } = $props();
 </script>
 
-<div class="flex h-screen w-full items-center justify-center px-4">
+<div class="flex h-full w-full items-center justify-center px-4">
     <LoginForm {form} />
 </div>
