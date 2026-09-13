@@ -3,11 +3,24 @@
     import * as Dialog from "$lib/components/ui/dialog/index";
     import { Button, buttonVariants } from "$lib/components/ui/button/index";
     import Trash2 from "@lucide/svelte/icons/trash-2";
+    import Pencil from "@lucide/svelte/icons/pencil";
     import { enhance } from "$app/forms";
     import { cn } from "$lib/utils.js";
     import { formatCents, percentOfCents } from "$lib/money";
+    import AddCard from "$lib/components/AddCard.svelte";
+    import type { Card as CardData } from "$lib/server/db/queries/cards";
 
-    let { card, showPaycheckNumber = false } = $props();
+    let {
+        card,
+        showPaycheckNumber = false,
+        paydaySettings
+    }: {
+        card: CardData;
+        showPaycheckNumber?: boolean;
+        paydaySettings?: { paydate: Date; frequency: number };
+    } = $props();
+
+    let editOpen = $state<boolean>(false);
 
     let title = $derived(
         showPaycheckNumber
@@ -66,6 +79,17 @@
                 <p>{title}</p>
                 <div class="flex items-center gap-3">
                     <p>Pay: {formatCents(card.payAmountCents)}</p>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        class="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        aria-label="Edit card"
+                        onclick={() => (editOpen = true)}
+                    >
+                        <Pencil class="h-4 w-4" />
+                    </Button>
+                    <AddCard cardToEdit={card} {paydaySettings} bind:open={editOpen} />
                     <Dialog.Root bind:open={deleteOpen}>
                         <Dialog.Trigger
                             type="button"

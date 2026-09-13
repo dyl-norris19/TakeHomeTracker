@@ -12,26 +12,57 @@
         type CardFormErrors,
         type CardFormValues
     } from "$lib/validation";
-    import { centsToInput, parsePercentToBasisPoints, parseToCents } from "$lib/money";
+    import {
+        basisPointsToInput,
+        centsToInput,
+        parsePercentToBasisPoints,
+        parseToCents
+    } from "$lib/money";
     import {
         isMonthly,
         monthOptions,
         nearestPaycheck,
         parseMonthValue,
         paycheckCountInMonth,
-        resolvePaydate
+        resolvePaydate,
+        toMonthValue
     } from "$lib/paydates";
+    import { monthNameToIndex } from "$lib/validation";
+    import type { Card } from "$lib/server/db/queries/cards";
     import BillListEditor from "$lib/components/BillListEditor.svelte";
 
     let {
-        recurringBills,
-        paydaySettings
+        recurringBills = [],
+        paydaySettings,
+        cardToEdit,
+        open = $bindable(false)
     }: {
-        recurringBills: { name: string; amountCents: number }[];
+        recurringBills?: { name: string; amountCents: number }[];
         paydaySettings?: { paydate: Date; frequency: number };
+        cardToEdit?: Card;
+        open?: boolean;
     } = $props();
 
-    const months = monthOptions();
+    // Month choices are a window around today; when editing an older/newer card
+    // whose month falls outside that window, add it so it stays selectable.
+    let months = $derived.by(() => {
+        const options = monthOptions();
+        if (cardToEdit) {
+            const monthIndex = monthNameToIndex(cardToEdit.month);
+            const value = toMonthValue(cardToEdit.year, monthIndex);
+            if (!options.some((m) => m.value === value)) {
+                options.push({
+                    year: cardToEdit.year,
+                    monthIndex,
+                    value,
+                    label: `${cardToEdit.month} ${cardToEdit.year}`
+                });
+                options.sort((a, b) => a.value.localeCompare(b.value));
+            }
+        }
+        return options;
+    });
+
     const dateFmt = new Intl.DateTimeFormat("en-US", {
         weekday: "long",
         month: "long",
@@ -80,28 +111,49 @@
     let otherBills = $state<{ name: string; amount: string | number }[]>([]);
     let notes = $state<string>("");
 
-    let cardOpen = $state<boolean>(false);
     let otherBillsEditing = $state<boolean>(false);
 
     let fieldErrors = $state<CardFormErrors>({});
     let submitError = $state<string>("");
 
+    // While the dialog is closed, keep the form seeded so opening it shows the
+    // right starting point.
     $effect(() => {
-        if (!cardOpen) {
-            // Pre-fill to the paycheck closest to today; the user can still change it.
-            const nearest = paydaySettings ? nearestPaycheck(paydaySettings) : null;
-            selectedMonth = nearest?.value ?? "";
-            paycheckNumber = nearest ? String(nearest.paycheckNumber) : "1";
+        if (!open) {
+            if (cardToEdit) {
+                selectedMonth = toMonthValue(cardToEdit.year, monthNameToIndex(cardToEdit.month));
+                paycheckNumber = String(cardToEdit.paycheckNumber);
+                payAmount = centsToInput(cardToEdit.payAmountCents);
+                savingsType = cardToEdit.savings.method === "percent" ? "%" : "flat";
+                savingsAmount =
+                    cardToEdit.savings.method === "percent"
+                        ? basisPointsToInput(cardToEdit.savings.basisPoints)
+                        : centsToInput(cardToEdit.savings.flatCents);
+                reoccurBills = cardToEdit.reoccurBills.map((bill) => ({
+                    name: bill.name,
+                    amount: centsToInput(bill.amountCents)
+                }));
+                otherBills = cardToEdit.otherBills.map((bill) => ({
+                    name: bill.name,
+                    amount: centsToInput(bill.amountCents)
+                }));
+                notes = cardToEdit.notes ?? "";
+            } else {
+                // Pre-fill to the paycheck closest to today; the user can still change it.
+                const nearest = paydaySettings ? nearestPaycheck(paydaySettings) : null;
+                selectedMonth = nearest?.value ?? "";
+                paycheckNumber = nearest ? String(nearest.paycheckNumber) : "1";
+                payAmount = "";
+                savingsType = "";
+                savingsAmount = "";
+                reoccurBills = recurringBills.map((bill) => ({
+                    name: bill.name,
+                    amount: centsToInput(bill.amountCents)
+                }));
+                otherBills = [];
+                notes = "";
+            }
             confirmDuplicate = false;
-            payAmount = "";
-            savingsType = "";
-            savingsAmount = "";
-            reoccurBills = recurringBills.map((bill) => ({
-                name: bill.name,
-                amount: centsToInput(bill.amountCents)
-            }));
-            otherBills = [];
-            notes = "";
             fieldErrors = {};
             submitError = "";
             otherBillsEditing = false;
@@ -154,12 +206,14 @@
     {/if}
 {/snippet}
 
-<Dialog.Root bind:open={cardOpen}>
-    <Dialog.Trigger type="button" class={buttonVariants()}>New Card +</Dialog.Trigger>
+<Dialog.Root bind:open>
+    {#if !cardToEdit}
+        <Dialog.Trigger type="button" class={buttonVariants()}>New Card +</Dialog.Trigger>
+    {/if}
     <Dialog.Content>
         <form
             method="POST"
-            action="?/createCard"
+            action={cardToEdit ? "?/updateCard" : "?/createCard"}
             use:enhance={({ cancel }) => {
                 const errors = validateCardForm(currentValues());
                 if (Object.keys(errors).length > 0) {
@@ -173,7 +227,7 @@
                 return async ({ result, update }) => {
                     await update({ reset: false });
                     if (result.type === 'success') {
-                        cardOpen = false;
+                        open = false;
                     } else if (result.type === 'failure') {
                         const data = result.data as
                             | {
@@ -194,8 +248,10 @@
             }}
         >
             <Dialog.Header>
-                <Dialog.Title>New Paycheck!</Dialog.Title>
-                <Dialog.Description>Fill out the info below</Dialog.Description>
+                <Dialog.Title>{cardToEdit ? "Edit Paycheck" : "New Paycheck!"}</Dialog.Title>
+                <Dialog.Description>
+                    {cardToEdit ? "Update the info below" : "Fill out the info below"}
+                </Dialog.Description>
             </Dialog.Header>
             {#if !paydaySettings}
                 <p class="text-sm text-red-500">
@@ -299,13 +355,18 @@
                     />
                 </div>
             </div>
+            {#if cardToEdit}
+                <input type="hidden" name="cardId" value={cardToEdit.id} />
+            {/if}
             <input type="hidden" name="payAmount" value={payAmount} />
             <input type="hidden" name="savingsAmount" value={savingsAmount} />
             <input type="hidden" name="reoccurBills" value={reoccurBillsJson} />
             <input type="hidden" name="otherBills" value={otherBillsJson} />
             <input type="hidden" name="confirmDuplicate" value={confirmDuplicate} />
             <Dialog.Footer>
-                <Button type="submit" disabled={!paydaySettings || otherBillsEditing || !resolvedPaydate}>Submit</Button>
+                <Button type="submit" disabled={!paydaySettings || otherBillsEditing || !resolvedPaydate}>
+                    {cardToEdit ? "Save" : "Submit"}
+                </Button>
             </Dialog.Footer>
         </form>
     </Dialog.Content>

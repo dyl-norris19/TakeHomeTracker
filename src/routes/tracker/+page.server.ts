@@ -5,11 +5,15 @@ import { upsertPaydaySettings } from '$lib/server/db/commands/payday-settings';
 import { getRecurringBills } from '$lib/server/db/queries/recurring-bills';
 import { replaceRecurringBills } from '$lib/server/db/commands/recurring-bills';
 import { getCardsByUser } from '$lib/server/db/queries/cards';
-import { createCard, deleteCard } from '$lib/server/db/commands/cards';
+import {
+    createCard as insertCard,
+    updateCard as updateCardRow,
+    deleteCard as deleteCardRow
+} from '$lib/server/db/commands/cards';
 import { getFormString } from '$lib/server/form-data';
 import { MONTHS, validateBills, validateCardForm, type CardFormValues } from '$lib/validation';
 import { parsePercentToBasisPoints, parseToCents } from '$lib/money';
-import { isMonthly, parseMonthValue, resolvePaydate } from '$lib/paydates';
+import { isMonthly, parseMonthValue, resolvePaydate, type PaydaySettings } from '$lib/paydates';
 
 function parseSavingsMethod(raw: string): 'percent' | 'flat' | null {
     if (raw === '%') {
@@ -43,6 +47,58 @@ function parseBills(raw: FormDataEntryValue | null): { name: string; amountCents
         );
 
     return isValid ? (bills as { name: string; amountCents: number }[]) : null;
+}
+
+type ParsedCard =
+    | { ok: true; values: CardFormValues; monthName: string; payDate: Date }
+    | { ok: false; failure: ReturnType<typeof fail> };
+
+function parseCardSubmission(formData: FormData, paydaySettings: PaydaySettings): ParsedCard {
+    const parsedMonth = parseMonthValue(getFormString(formData, 'month') ?? '');
+    const monthly = isMonthly(paydaySettings);
+    const savingsMethod = parseSavingsMethod(getFormString(formData, 'savingsType') ?? '');
+    const rawSavings = getFormString(formData, 'savingsAmount');
+    const rawNotes = getFormString(formData, 'notes')?.trim() ?? '';
+    const values: CardFormValues = {
+        year: parsedMonth?.year ?? Number.NaN,
+        monthIndex: parsedMonth?.monthIndex ?? Number.NaN,
+        paycheckNumber: monthly ? 1 : Number(getFormString(formData, 'paycheckNumber')),
+        payAmountCents: parseToCents(getFormString(formData, 'payAmount')),
+        savingsMethod,
+        savingsValue:
+            savingsMethod === 'percent'
+                ? parsePercentToBasisPoints(rawSavings)
+                : parseToCents(rawSavings),
+        reoccurBills: parseBills(formData.get('reoccurBills')),
+        otherBills: parseBills(formData.get('otherBills')),
+        notes: rawNotes || null
+    };
+
+    const cardFieldErrors = validateCardForm(values);
+    if (Object.keys(cardFieldErrors).length > 0) {
+        return {
+            ok: false,
+            failure: fail(400, { cardError: 'Please fix the highlighted fields.', cardFieldErrors })
+        };
+    }
+
+    const payDate = resolvePaydate(
+        paydaySettings,
+        values.year,
+        values.monthIndex,
+        values.paycheckNumber
+    );
+    if (!payDate) {
+        return {
+            ok: false,
+            failure: fail(400, {
+                cardError: 'That paycheck doesn’t exist for the month you picked.',
+                cardFieldErrors: { paycheckNumber: 'Pick a valid paycheck for this month.' }
+            })
+        };
+    }
+
+    return { ok: true, values, monthName: MONTHS[values.monthIndex], payDate };
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -111,45 +167,13 @@ export const actions: Actions = {
         }
 
         const formData = await request.formData();
-        const parsedMonth = parseMonthValue(getFormString(formData, 'month') ?? '');
+        const parsed = parseCardSubmission(formData, paydaySettings);
+        if (!parsed.ok) {
+            return parsed.failure;
+        }
+        const { values, monthName, payDate } = parsed;
         const monthly = isMonthly(paydaySettings);
-        const savingsMethod = parseSavingsMethod(getFormString(formData, 'savingsType') ?? '');
-        const rawSavings = getFormString(formData, 'savingsAmount');
-        const rawNotes = getFormString(formData, 'notes')?.trim() ?? '';
-        const values: CardFormValues = {
-            year: parsedMonth?.year ?? Number.NaN,
-            monthIndex: parsedMonth?.monthIndex ?? Number.NaN,
-            paycheckNumber: monthly ? 1 : Number(getFormString(formData, 'paycheckNumber')),
-            payAmountCents: parseToCents(getFormString(formData, 'payAmount')),
-            savingsMethod,
-            savingsValue:
-                savingsMethod === 'percent'
-                    ? parsePercentToBasisPoints(rawSavings)
-                    : parseToCents(rawSavings),
-            reoccurBills: parseBills(formData.get('reoccurBills')),
-            otherBills: parseBills(formData.get('otherBills')),
-            notes: rawNotes || null
-        };
 
-        const cardFieldErrors = validateCardForm(values);
-        if (Object.keys(cardFieldErrors).length > 0) {
-            return fail(400, { cardError: 'Please fix the highlighted fields.', cardFieldErrors });
-        }
-
-        const payDate = resolvePaydate(
-            paydaySettings,
-            values.year,
-            values.monthIndex,
-            values.paycheckNumber
-        );
-        if (!payDate) {
-            return fail(400, {
-                cardError: 'That paycheck doesn’t exist for the month you picked.',
-                cardFieldErrors: { paycheckNumber: 'Pick a valid paycheck for this month.' }
-            });
-        }
-
-        const monthName = MONTHS[values.monthIndex];
         const existingCards = await getCardsByUser(locals.user.id);
         const isDuplicate = existingCards.some(
             (card) =>
@@ -166,7 +190,7 @@ export const actions: Actions = {
             });
         }
 
-        await createCard(locals.user.id, {
+        await insertCard(locals.user.id, {
             month: monthName,
             year: values.year,
             paycheckNumber: values.paycheckNumber,
@@ -184,6 +208,71 @@ export const actions: Actions = {
         return { cardSuccess: true };
     },
 
+    updateCard: async ({ request, locals }) => {
+        if (!locals.user) {
+            return fail(401);
+        }
+
+        const paydaySettings = await getPaydaySettings(locals.user.id);
+        if (!paydaySettings) {
+            return fail(400, {
+                cardError: 'Set your paydate first.'
+            });
+        }
+
+        const formData = await request.formData();
+        const cardId = Number(formData.get('cardId'));
+        if (!cardId || Number.isNaN(cardId)) {
+            return fail(400, { cardError: 'Invalid card.' });
+        }
+
+        const parsed = parseCardSubmission(formData, paydaySettings);
+        if (!parsed.ok) {
+            return parsed.failure;
+        }
+        const { values, monthName, payDate } = parsed;
+        const monthly = isMonthly(paydaySettings);
+
+        // A card colliding with the one being edited is expected — only warn when
+        // the edit would land on top of a *different* existing card.
+        const existingCards = await getCardsByUser(locals.user.id);
+        const isDuplicate = existingCards.some(
+            (card) =>
+                card.id !== cardId &&
+                card.year === values.year &&
+                card.month === monthName &&
+                card.paycheckNumber === values.paycheckNumber
+        );
+        if (isDuplicate && getFormString(formData, 'confirmDuplicate') !== 'true') {
+            return fail(409, {
+                cardError: monthly
+                    ? `You already have another card for ${monthName} ${values.year}. Submit again to keep both.`
+                    : `You already have another card for ${monthName} ${values.year}, paycheck ${values.paycheckNumber}. Submit again to keep both.`,
+                cardDuplicate: true
+            });
+        }
+
+        const updated = await updateCardRow(locals.user.id, cardId, {
+            month: monthName,
+            year: values.year,
+            paycheckNumber: values.paycheckNumber,
+            payAmountCents: values.payAmountCents,
+            payDate,
+            savings:
+                values.savingsMethod === 'percent'
+                    ? { method: 'percent', basisPoints: values.savingsValue }
+                    : { method: 'flat', flatCents: values.savingsValue },
+            reoccurBills: values.reoccurBills!,
+            otherBills: values.otherBills!,
+            notes: values.notes
+        });
+        if (!updated) {
+            return fail(404, { cardError: 'Card not found.' });
+        }
+
+        return { cardSuccess: true };
+    },
+
     deleteCard: async ({ request, locals }) => {
         if (!locals.user) {
             return fail(401);
@@ -196,7 +285,7 @@ export const actions: Actions = {
             return fail(400, { cardError: 'Invalid card.' });
         }
 
-        const deleted = await deleteCard(locals.user.id, cardId);
+        const deleted = await deleteCardRow(locals.user.id, cardId);
         if (!deleted) {
             return fail(404, { cardError: 'Card not found.' });
         }

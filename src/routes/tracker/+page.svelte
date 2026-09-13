@@ -57,7 +57,7 @@
                 onscroll={updateCardsFade}
             >
                 {#each userCards as card (card.id)}
-                    <Occurrance {card} {showPaycheckNumber} />
+                    <Occurrance {card} {showPaycheckNumber} paydaySettings={data.paydaySettings} />
                 {/each}
             </div>
         </div>

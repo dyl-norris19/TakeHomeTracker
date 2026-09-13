@@ -20,6 +20,16 @@ export const MONTHS = [
 	'December'
 ] as const;
 
+export type MonthName = (typeof MONTHS)[number];
+
+/**
+ * Index (0-11) of a month name, or -1 if it isn't a known month. Cards store the
+ * month as a plain string, so this is the widening lookup back into {@link MONTHS}.
+ */
+export function monthNameToIndex(name: string): number {
+	return (MONTHS as readonly string[]).indexOf(name);
+}
+
 export type SavingsMethod = 'percent' | 'flat';
 
 /** A bill as it's stored/computed: an integer-cents amount. */
