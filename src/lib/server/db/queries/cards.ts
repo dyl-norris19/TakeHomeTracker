@@ -17,6 +17,7 @@ export type Card = {
     savings: CardSavings;
     reoccurBills: CardBill[];
     otherBills: CardBill[];
+    notes: string | null;
 };
 
 export async function getCardsByUser(userId: number): Promise<Card[]> {
@@ -34,6 +35,7 @@ export async function getCardsByUser(userId: number): Promise<Card[]> {
                 ? { method: 'percent', basisPoints: row.savingsBasisPoints ?? 0 }
                 : { method: 'flat', flatCents: row.savingsFlatCents ?? 0 },
         reoccurBills: JSON.parse(row.recurringBillsSnapshot) as CardBill[],
-        otherBills: JSON.parse(row.otherBills) as CardBill[]
+        otherBills: JSON.parse(row.otherBills) as CardBill[],
+        notes: row.notes
     }));
 }

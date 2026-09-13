@@ -36,6 +36,7 @@ export type CardFormValues = {
 	savingsValue: number;
 	reoccurBills: CardBillInput[] | null;
 	otherBills: CardBillInput[] | null;
+	notes: string | null;
 };
 
 export type CardFormField =

@@ -14,6 +14,7 @@ export async function createCard(
         savings: CardSavings;
         reoccurBills: CardBill[];
         otherBills: CardBill[];
+        notes: string | null;
     }
 ) {
     const result = await db
@@ -29,7 +30,8 @@ export async function createCard(
             savingsFlatCents: data.savings.method === 'flat' ? data.savings.flatCents : null,
             savingsBasisPoints: data.savings.method === 'percent' ? data.savings.basisPoints : null,
             recurringBillsSnapshot: JSON.stringify(data.reoccurBills),
-            otherBills: JSON.stringify(data.otherBills)
+            otherBills: JSON.stringify(data.otherBills),
+            notes: data.notes
         })
         .returning();
 

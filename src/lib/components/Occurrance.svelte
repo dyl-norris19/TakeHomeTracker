@@ -117,6 +117,9 @@
             {#each card.otherBills as bill, index (bill.name + index)}
                 <p>{bill.name}: {formatCents(bill.amountCents)}</p>
             {/each}
+            {#if card.notes}
+                <p class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{card.notes}</p>
+            {/if}
         </Card.Content>
         <Card.Footer class="flex justify-between">
             <p>Savings: {formatCents(savingsCents())}</p>

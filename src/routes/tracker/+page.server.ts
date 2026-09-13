@@ -115,6 +115,7 @@ export const actions: Actions = {
         const monthly = isMonthly(paydaySettings);
         const savingsMethod = parseSavingsMethod(getFormString(formData, 'savingsType') ?? '');
         const rawSavings = getFormString(formData, 'savingsAmount');
+        const rawNotes = getFormString(formData, 'notes')?.trim() ?? '';
         const values: CardFormValues = {
             year: parsedMonth?.year ?? Number.NaN,
             monthIndex: parsedMonth?.monthIndex ?? Number.NaN,
@@ -126,7 +127,8 @@ export const actions: Actions = {
                     ? parsePercentToBasisPoints(rawSavings)
                     : parseToCents(rawSavings),
             reoccurBills: parseBills(formData.get('reoccurBills')),
-            otherBills: parseBills(formData.get('otherBills'))
+            otherBills: parseBills(formData.get('otherBills')),
+            notes: rawNotes || null
         };
 
         const cardFieldErrors = validateCardForm(values);
@@ -175,7 +177,8 @@ export const actions: Actions = {
                     ? { method: 'percent', basisPoints: values.savingsValue }
                     : { method: 'flat', flatCents: values.savingsValue },
             reoccurBills: values.reoccurBills!,
-            otherBills: values.otherBills!
+            otherBills: values.otherBills!,
+            notes: values.notes
         });
 
         return { cardSuccess: true };

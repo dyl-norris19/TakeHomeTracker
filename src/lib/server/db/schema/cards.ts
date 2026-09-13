@@ -19,5 +19,6 @@ export const cards = sqliteTable('cards', {
     savingsFlatCents: integer('savings_flat_cents'),
     savingsBasisPoints: integer('savings_basis_points'),
     recurringBillsSnapshot: text('recurring_bills_snapshot').notNull(),
-    otherBills: text('other_bills').notNull()
+    otherBills: text('other_bills').notNull(),
+    notes: text('notes')
 });

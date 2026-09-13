@@ -43,6 +43,13 @@
       "when": 1789007595003,
       "tag": "0005_money_to_cents",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789252052857,
+      "tag": "0006_add_card_notes",
+      "breakpoints": true
     }
   ]
 }

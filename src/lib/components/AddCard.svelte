@@ -2,6 +2,7 @@
     import { Button, buttonVariants } from "$lib/components/ui/button/index";
     import * as Select from "$lib/components/ui/select/index";
     import { Input } from "$lib/components/ui/input/index";
+    import { Textarea } from "$lib/components/ui/textarea/index";
     import { Label } from "$lib/components/ui/label/index";
     import * as RadioGroup from "$lib/components/ui/radio-group/index.js";
     import * as Dialog from "$lib/components/ui/dialog/index";
@@ -77,6 +78,7 @@
     let savingsAmount = $state<string | number>("");
     let reoccurBills = $state<{ name: string; amount: string | number }[]>([]);
     let otherBills = $state<{ name: string; amount: string | number }[]>([]);
+    let notes = $state<string>("");
 
     let cardOpen = $state<boolean>(false);
     let otherBillsEditing = $state<boolean>(false);
@@ -99,6 +101,7 @@
                 amount: centsToInput(bill.amountCents)
             }));
             otherBills = [];
+            notes = "";
             fieldErrors = {};
             submitError = "";
             otherBillsEditing = false;
@@ -127,7 +130,8 @@
             otherBills: otherBills.map((bill) => ({
                 name: bill.name,
                 amountCents: parseToCents(bill.amount)
-            }))
+            })),
+            notes: notes.trim() || null
         };
     }
 
@@ -284,6 +288,16 @@
                 </div>
                 {@render fieldError(fieldErrors.savingsType)}
                 {@render fieldError(fieldErrors.savingsAmount)}
+                <h2 class="font-bold">Notes</h2>
+                <div class="grid grid-cols-4 items-start gap-4">
+                    <Textarea
+                        id="notes"
+                        name="notes"
+                        placeholder="(Optional)"
+                        bind:value={notes}
+                        class="col-span-4"
+                    />
+                </div>
             </div>
             <input type="hidden" name="payAmount" value={payAmount} />
             <input type="hidden" name="savingsAmount" value={savingsAmount} />
