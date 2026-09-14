@@ -1,7 +1,8 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/index';
 import { cards } from '$lib/server/db/schema/cards';
-import type { CardBill, CardSavings } from '$lib/server/db/queries/cards';
+import { cardGoalAllocations } from '$lib/server/db/schema/savings-goals';
+import type { CardBill, CardGoalAllocation, CardSavings } from '$lib/server/db/queries/cards';
 
 export type CardWriteData = {
     month: string;
@@ -12,6 +13,7 @@ export type CardWriteData = {
     savings: CardSavings;
     reoccurBills: CardBill[];
     otherBills: CardBill[];
+    goalAllocations: CardGoalAllocation[];
     notes: string | null;
 };
 
@@ -31,30 +33,68 @@ function cardColumns(data: CardWriteData) {
     };
 }
 
-export async function createCard(userId: number, data: CardWriteData) {
-    const result = await db
-        .insert(cards)
-        .values({ userId, ...cardColumns(data) })
-        .returning();
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-    return result[0];
+// Replaces a card's goal allocations wholesale; zero amounts aren't stored.
+function writeAllocations(tx: Tx, cardId: number, allocations: CardGoalAllocation[]) {
+    tx.delete(cardGoalAllocations).where(eq(cardGoalAllocations.cardId, cardId)).run();
+
+    const rows = allocations
+        .filter((allocation) => allocation.amountCents > 0)
+        .map((allocation) => ({
+            cardId,
+            goalId: allocation.goalId,
+            amountCents: allocation.amountCents
+        }));
+    if (rows.length > 0) {
+        tx.insert(cardGoalAllocations).values(rows).run();
+    }
+}
+
+export async function createCard(userId: number, data: CardWriteData) {
+    return db.transaction((tx) => {
+        const card = tx
+            .insert(cards)
+            .values({ userId, ...cardColumns(data) })
+            .returning()
+            .get();
+
+        writeAllocations(tx, card.id, data.goalAllocations);
+
+        return card;
+    });
 }
 
 export async function updateCard(userId: number, cardId: number, data: CardWriteData) {
-    const result = await db
-        .update(cards)
-        .set(cardColumns(data))
-        .where(and(eq(cards.id, cardId), eq(cards.userId, userId)))
-        .returning();
+    return db.transaction((tx) => {
+        const card = tx
+            .update(cards)
+            .set(cardColumns(data))
+            .where(and(eq(cards.id, cardId), eq(cards.userId, userId)))
+            .returning()
+            .get();
 
-    return result[0];
+        if (card) {
+            writeAllocations(tx, card.id, data.goalAllocations);
+        }
+
+        return card;
+    });
 }
 
 export async function deleteCard(userId: number, cardId: number) {
-    const result = await db
-        .delete(cards)
-        .where(and(eq(cards.id, cardId), eq(cards.userId, userId)))
-        .returning();
+    return db.transaction((tx) => {
+        const card = tx
+            .select({ id: cards.id })
+            .from(cards)
+            .where(and(eq(cards.id, cardId), eq(cards.userId, userId)))
+            .get();
+        if (!card) {
+            return undefined;
+        }
 
-    return result[0];
+        tx.delete(cardGoalAllocations).where(eq(cardGoalAllocations.cardId, card.id)).run();
+
+        return tx.delete(cards).where(eq(cards.id, card.id)).returning().get();
+    });
 }

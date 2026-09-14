@@ -10,8 +10,17 @@ import {
     updateCard as updateCardRow,
     deleteCard as deleteCardRow
 } from '$lib/server/db/commands/cards';
+import { getGoalsByUser } from '$lib/server/db/queries/savings-goals';
+import { createGoal as insertGoal, setGoalCompleted } from '$lib/server/db/commands/savings-goals';
 import { getFormString } from '$lib/server/form-data';
-import { MONTHS, validateBills, validateCardForm, type CardFormValues } from '$lib/validation';
+import {
+    MONTHS,
+    validateBills,
+    validateCardForm,
+    validateGoalForm,
+    type CardFormValues,
+    type GoalAllocationInput
+} from '$lib/validation';
 import { parsePercentToBasisPoints, parseToCents } from '$lib/money';
 import { isMonthly, parseMonthValue, resolvePaydate, type PaydaySettings } from '$lib/paydates';
 
@@ -49,6 +58,46 @@ function parseBills(raw: FormDataEntryValue | null): { name: string; amountCents
     return isValid ? (bills as { name: string; amountCents: number }[]) : null;
 }
 
+function parseGoalAllocations(raw: FormDataEntryValue | null): GoalAllocationInput[] | null {
+    // Older clients (or a form with no goals) don't send the field at all.
+    if (raw === null) {
+        return [];
+    }
+    if (typeof raw !== 'string') {
+        return null;
+    }
+
+    let allocations: unknown;
+    try {
+        allocations = JSON.parse(raw);
+    } catch {
+        return null;
+    }
+
+    const isValid =
+        Array.isArray(allocations) &&
+        allocations.every(
+            (allocation) =>
+                allocation &&
+                Number.isInteger(allocation.goalId) &&
+                Number.isInteger(allocation.amountCents)
+        );
+
+    return isValid ? (allocations as GoalAllocationInput[]) : null;
+}
+
+/** A 400 failure if any allocation points at a goal the user doesn't own, else null. */
+async function checkGoalOwnership(userId: number, allocations: GoalAllocationInput[]) {
+    const ownedGoalIds = new Set((await getGoalsByUser(userId)).map((goal) => goal.id));
+    if (allocations.every((allocation) => ownedGoalIds.has(allocation.goalId))) {
+        return null;
+    }
+    return fail(400, {
+        cardError: 'One of those goals no longer exists — reload and try again.',
+        cardFieldErrors: { goalAllocations: 'Pick goals from your list.' }
+    });
+}
+
 type ParsedCard =
     | { ok: true; values: CardFormValues; monthName: string; payDate: Date }
     | { ok: false; failure: ReturnType<typeof fail> };
@@ -71,6 +120,7 @@ function parseCardSubmission(formData: FormData, paydaySettings: PaydaySettings)
                 : parseToCents(rawSavings),
         reoccurBills: parseBills(formData.get('reoccurBills')),
         otherBills: parseBills(formData.get('otherBills')),
+        goalAllocations: parseGoalAllocations(formData.get('goalAllocations')),
         notes: rawNotes || null
     };
 
@@ -110,7 +160,8 @@ export const load: PageServerLoad = async ({ locals }) => {
         email: locals.user.email,
         paydaySettings: await getPaydaySettings(locals.user.id),
         recurringBills: await getRecurringBills(locals.user.id),
-        cards: await getCardsByUser(locals.user.id)
+        cards: await getCardsByUser(locals.user.id),
+        goals: await getGoalsByUser(locals.user.id)
     };
 };
 
@@ -174,6 +225,11 @@ export const actions: Actions = {
         const { values, monthName, payDate } = parsed;
         const monthly = isMonthly(paydaySettings);
 
+        const ownershipFailure = await checkGoalOwnership(locals.user.id, values.goalAllocations!);
+        if (ownershipFailure) {
+            return ownershipFailure;
+        }
+
         const existingCards = await getCardsByUser(locals.user.id);
         const isDuplicate = existingCards.some(
             (card) =>
@@ -202,6 +258,7 @@ export const actions: Actions = {
                     : { method: 'flat', flatCents: values.savingsValue },
             reoccurBills: values.reoccurBills!,
             otherBills: values.otherBills!,
+            goalAllocations: values.goalAllocations!,
             notes: values.notes
         });
 
@@ -232,6 +289,11 @@ export const actions: Actions = {
         }
         const { values, monthName, payDate } = parsed;
         const monthly = isMonthly(paydaySettings);
+
+        const ownershipFailure = await checkGoalOwnership(locals.user.id, values.goalAllocations!);
+        if (ownershipFailure) {
+            return ownershipFailure;
+        }
 
         // A card colliding with the one being edited is expected — only warn when
         // the edit would land on top of a *different* existing card.
@@ -264,6 +326,7 @@ export const actions: Actions = {
                     : { method: 'flat', flatCents: values.savingsValue },
             reoccurBills: values.reoccurBills!,
             otherBills: values.otherBills!,
+            goalAllocations: values.goalAllocations!,
             notes: values.notes
         });
         if (!updated) {
@@ -291,5 +354,49 @@ export const actions: Actions = {
         }
 
         return { cardDeleted: true };
+    },
+
+    createGoal: async ({ request, locals }) => {
+        if (!locals.user) {
+            return fail(401);
+        }
+
+        const formData = await request.formData();
+        const rawStarting = getFormString(formData, 'startingAmount')?.trim() ?? '';
+        const values = {
+            name: getFormString(formData, 'name')?.trim() ?? '',
+            targetCents: parseToCents(getFormString(formData, 'targetAmount')),
+            // The starting amount is optional; blank means nothing saved yet.
+            startingCents: rawStarting ? parseToCents(rawStarting) : 0
+        };
+
+        const goalFieldErrors = validateGoalForm(values);
+        if (Object.keys(goalFieldErrors).length > 0) {
+            return fail(400, { goalError: 'Please fix the highlighted fields.', goalFieldErrors });
+        }
+
+        await insertGoal(locals.user.id, values);
+
+        return { goalSuccess: true };
+    },
+
+    setGoalCompleted: async ({ request, locals }) => {
+        if (!locals.user) {
+            return fail(401);
+        }
+
+        const formData = await request.formData();
+        const goalId = Number(formData.get('goalId'));
+        if (!goalId || Number.isNaN(goalId)) {
+            return fail(400, { goalError: 'Invalid goal.' });
+        }
+
+        const completed = getFormString(formData, 'completed') === 'true';
+        const updated = await setGoalCompleted(locals.user.id, goalId, completed);
+        if (!updated) {
+            return fail(404, { goalError: 'Goal not found.' });
+        }
+
+        return { goalSuccess: true };
     }
 };

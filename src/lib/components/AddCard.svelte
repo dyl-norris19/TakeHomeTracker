@@ -15,8 +15,10 @@
     import {
         basisPointsToInput,
         centsToInput,
+        formatCents,
         parsePercentToBasisPoints,
-        parseToCents
+        parseToCents,
+        savingsCents
     } from "$lib/money";
     import {
         isMonthly,
@@ -29,17 +31,20 @@
     } from "$lib/paydates";
     import { monthNameToIndex } from "$lib/validation";
     import type { Card } from "$lib/server/db/queries/cards";
+    import type { Goal } from "$lib/server/db/queries/savings-goals";
     import BillListEditor from "$lib/components/BillListEditor.svelte";
 
     let {
         recurringBills = [],
         paydaySettings,
         cardToEdit,
+        goals = [],
         open = $bindable(false)
     }: {
         recurringBills?: { name: string; amountCents: number }[];
         paydaySettings?: { paydate: Date; frequency: number };
         cardToEdit?: Card;
+        goals?: Goal[];
         open?: boolean;
     } = $props();
 
@@ -110,6 +115,9 @@
     let reoccurBills = $state<{ name: string; amount: string | number }[]>([]);
     let otherBills = $state<{ name: string; amount: string | number }[]>([]);
     let notes = $state<string>("");
+    let goalAmounts = $state<
+        { goalId: number; name: string; completed: boolean; amount: string | number }[]
+    >([]);
 
     let otherBillsEditing = $state<boolean>(false);
 
@@ -153,6 +161,18 @@
                 otherBills = [];
                 notes = "";
             }
+            // Completed goals stay listed so they can keep growing past the target.
+            goalAmounts = goals.map((goal) => {
+                const existing = cardToEdit?.goalAllocations.find(
+                    (allocation) => allocation.goalId === goal.id
+                );
+                return {
+                    goalId: goal.id,
+                    name: goal.name,
+                    completed: goal.completedAt !== null,
+                    amount: existing ? centsToInput(existing.amountCents) : ""
+                };
+            });
             confirmDuplicate = false;
             fieldErrors = {};
             submitError = "";
@@ -163,6 +183,33 @@
     let savingsMethod = $derived<"percent" | "flat" | null>(
         savingsType === "%" ? "percent" : savingsType === "flat" ? "flat" : null
     );
+
+    function goalAllocationValues(): { goalId: number; amountCents: number }[] {
+        return goalAmounts
+            .filter((row) => String(row.amount).trim() !== "")
+            .map((row) => ({ goalId: row.goalId, amountCents: parseToCents(row.amount) }));
+    }
+
+    // Savings left after goals — the general/rainy-day portion. Null until the
+    // savings and goal amounts are all valid numbers.
+    let generalSavingsCents = $derived.by(() => {
+        const payCents = parseToCents(payAmount);
+        const value =
+            savingsMethod === "percent"
+                ? parsePercentToBasisPoints(savingsAmount)
+                : parseToCents(savingsAmount);
+        const allocations = goalAllocationValues();
+        if (
+            !savingsMethod ||
+            !Number.isInteger(value) ||
+            !Number.isInteger(payCents) ||
+            allocations.some((allocation) => !Number.isInteger(allocation.amountCents))
+        ) {
+            return null;
+        }
+        const allocated = allocations.reduce((sum, allocation) => sum + allocation.amountCents, 0);
+        return savingsCents(payCents, savingsMethod, value) - allocated;
+    });
 
     function currentValues(): CardFormValues {
         return {
@@ -183,6 +230,7 @@
                 name: bill.name,
                 amountCents: parseToCents(bill.amount)
             })),
+            goalAllocations: goalAllocationValues(),
             notes: notes.trim() || null
         };
     }
@@ -197,6 +245,7 @@
             otherBills.map((bill) => ({ name: bill.name, amountCents: parseToCents(bill.amount) }))
         )
     );
+    let goalAllocationsJson = $derived(JSON.stringify(goalAllocationValues()));
 
 </script>
 
@@ -344,6 +393,32 @@
                 </div>
                 {@render fieldError(fieldErrors.savingsType)}
                 {@render fieldError(fieldErrors.savingsAmount)}
+                {#if goalAmounts.length > 0}
+                    <h2 class="font-bold">Put Toward Goals</h2>
+                    <div class="grid grid-cols-4 items-center gap-4">
+                        {#each goalAmounts as row (row.goalId)}
+                            <Label for="goal-{row.goalId}" class="text-right">
+                                {row.name}{row.completed ? " (complete)" : ""}
+                            </Label>
+                            <Input
+                                id="goal-{row.goalId}"
+                                placeholder="$0"
+                                bind:value={row.amount}
+                                class="col-span-3 w-[180px]"
+                            />
+                        {/each}
+                        {@render fieldError(fieldErrors.goalAllocations)}
+                    </div>
+                    {#if generalSavingsCents !== null}
+                        <p
+                            class="text-sm"
+                            class:text-muted-foreground={generalSavingsCents >= 0}
+                            class:text-red-500={generalSavingsCents < 0}
+                        >
+                            General savings: {formatCents(generalSavingsCents)}
+                        </p>
+                    {/if}
+                {/if}
                 <h2 class="font-bold">Notes</h2>
                 <div class="grid grid-cols-4 items-start gap-4">
                     <Textarea
@@ -362,6 +437,7 @@
             <input type="hidden" name="savingsAmount" value={savingsAmount} />
             <input type="hidden" name="reoccurBills" value={reoccurBillsJson} />
             <input type="hidden" name="otherBills" value={otherBillsJson} />
+            <input type="hidden" name="goalAllocations" value={goalAllocationsJson} />
             <input type="hidden" name="confirmDuplicate" value={confirmDuplicate} />
             <Dialog.Footer>
                 <Button type="submit" disabled={!paydaySettings || otherBillsEditing || !resolvedPaydate}>

@@ -1,3 +1,5 @@
+import { savingsCents } from './money';
+
 // Basic shape check: something, an @, dot-separated labels, at least one dot.
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 
@@ -35,6 +37,9 @@ export type SavingsMethod = 'percent' | 'flat';
 /** A bill as it's stored/computed: an integer-cents amount. */
 export type CardBillInput = { name: string; amountCents: number };
 
+/** A slice of a card's savings put toward one savings goal. */
+export type GoalAllocationInput = { goalId: number; amountCents: number };
+
 export type CardFormValues = {
 	year: number;
 	monthIndex: number;
@@ -46,6 +51,7 @@ export type CardFormValues = {
 	savingsValue: number;
 	reoccurBills: CardBillInput[] | null;
 	otherBills: CardBillInput[] | null;
+	goalAllocations: GoalAllocationInput[] | null;
 	notes: string | null;
 };
 
@@ -56,7 +62,8 @@ export type CardFormField =
 	| 'savingsType'
 	| 'savingsAmount'
 	| 'reoccurBills'
-	| 'otherBills';
+	| 'otherBills'
+	| 'goalAllocations';
 
 export type CardFormErrors = Partial<Record<CardFormField, string>>;
 
@@ -130,6 +137,85 @@ export function validateCardForm(values: CardFormValues): CardFormErrors {
 	const otherError = validateBills(values.otherBills, 'other bills');
 	if (otherError) {
 		errors.otherBills = otherError;
+	}
+
+	const allocationError = validateGoalAllocations(values);
+	if (allocationError) {
+		errors.goalAllocations = allocationError;
+	}
+
+	return errors;
+}
+
+/**
+ * Validates how a card's savings is split across goals. The split can't add up
+ * to more than the card's savings; whatever is left over is general savings.
+ */
+function validateGoalAllocations(values: CardFormValues): string | null {
+	const allocations = values.goalAllocations;
+	if (allocations === null) {
+		return "Couldn't read your goal amounts — make sure every amount is a number.";
+	}
+	const seen = new Set<number>();
+	let total = 0;
+	for (const allocation of allocations) {
+		if (!Number.isInteger(allocation.amountCents)) {
+			return 'Every goal amount must be a number.';
+		}
+		if (allocation.amountCents < 0) {
+			return "Goal amounts can't be negative.";
+		}
+		if (seen.has(allocation.goalId)) {
+			return 'Each goal can only be listed once.';
+		}
+		seen.add(allocation.goalId);
+		total += allocation.amountCents;
+	}
+	// Only compare against savings once the savings itself is valid; otherwise
+	// the savings field already carries the error.
+	if (
+		values.savingsMethod &&
+		Number.isInteger(values.savingsValue) &&
+		Number.isInteger(values.payAmountCents)
+	) {
+		const available = savingsCents(
+			values.payAmountCents,
+			values.savingsMethod,
+			values.savingsValue
+		);
+		if (total > available) {
+			return "Goal amounts add up to more than this card's savings.";
+		}
+	}
+	return null;
+}
+
+export type GoalFormValues = {
+	name: string;
+	targetCents: number;
+	startingCents: number;
+};
+
+export type GoalFormErrors = Partial<Record<'name' | 'target' | 'starting', string>>;
+
+/** Validates a new savings goal. An empty object means it's good to save. */
+export function validateGoalForm(values: GoalFormValues): GoalFormErrors {
+	const errors: GoalFormErrors = {};
+
+	if (!values.name.trim()) {
+		errors.name = 'Give the goal a name.';
+	}
+
+	if (!Number.isInteger(values.targetCents)) {
+		errors.target = 'Enter a target amount.';
+	} else if (values.targetCents <= 0) {
+		errors.target = 'Target must be greater than 0.';
+	}
+
+	if (!Number.isInteger(values.startingCents)) {
+		errors.starting = 'Starting amount must be a number.';
+	} else if (values.startingCents < 0) {
+		errors.starting = "Starting amount can't be negative.";
 	}
 
 	return errors;
