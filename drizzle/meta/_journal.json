@@ -50,6 +50,13 @@
       "when": 1789252052857,
       "tag": "0006_add_card_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789344207766,
+      "tag": "0007_create_savings_goals",
+      "breakpoints": true
     }
   ]
 }
