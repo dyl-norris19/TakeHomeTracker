@@ -3,6 +3,8 @@
     import AddCard from '$lib/components/AddCard.svelte'
     import NewRecBill from '$lib/components/NewRecBill.svelte';
     import Paydate from '$lib/components/Paydate.svelte';
+    import NewGoal from '$lib/components/NewGoal.svelte';
+    import SavingFor from '$lib/components/SavingFor.svelte';
     import 'normalize.css';
     import { tick } from 'svelte';
     import type { PageData } from './$types';
@@ -15,6 +17,11 @@
 
     let userCards = $derived(
         [...data.cards].sort((a, b) => a.payDate.getTime() - b.payDate.getTime())
+    );
+
+    // Open goals first, completed ones after; each group keeps creation order.
+    let sortedGoals = $derived(
+        [...data.goals].sort((a, b) => Number(a.completedAt !== null) - Number(b.completedAt !== null))
     );
 
     let cardsEl: HTMLDivElement | undefined = $state();
@@ -41,14 +48,23 @@
         <div class="flex h-full w-[65vw] justify-between space-x-8">
             <div class="flex h-full flex-col items-start flex-1 occurance-container space-y-8 overflow-y-auto">
                 {#if email}
-                    <AddCard recurringBills={data.recurringBills} paydaySettings={data.paydaySettings} />
+                    <AddCard
+                        recurringBills={data.recurringBills}
+                        paydaySettings={data.paydaySettings}
+                        goals={data.goals}
+                    />
                     <NewRecBill recurringBills={data.recurringBills} />
                     <Paydate paydaySettings={data.paydaySettings} />
+                    <NewGoal />
+                    {#if sortedGoals.length > 0}
+                        <div class="flex w-full flex-col space-y-4">
+                            {#each sortedGoals as goal (goal.id)}
+                                <SavingFor {goal} />
+                            {/each}
+                        </div>
+                    {/if}
                 {/if}
             </div>
-            <!-- <div class="flex-1 occurrence-container space-y-14 overflow-y-auto h-full">
-                <SavingFor />
-            </div> -->
             <div
                 class="flex-[2] occurrence-container space-y-4 overflow-y-auto h-full"
                 class:no-fade-top={atTop}
@@ -57,7 +73,12 @@
                 onscroll={updateCardsFade}
             >
                 {#each userCards as card (card.id)}
-                    <Occurrance {card} {showPaycheckNumber} paydaySettings={data.paydaySettings} />
+                    <Occurrance
+                        {card}
+                        {showPaycheckNumber}
+                        paydaySettings={data.paydaySettings}
+                        goals={data.goals}
+                    />
                 {/each}
             </div>
         </div>

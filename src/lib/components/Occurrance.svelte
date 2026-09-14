@@ -6,18 +6,21 @@
     import Pencil from "@lucide/svelte/icons/pencil";
     import { enhance } from "$app/forms";
     import { cn } from "$lib/utils.js";
-    import { formatCents, percentOfCents } from "$lib/money";
+    import { formatCents, savingsCents as cardSavingsCents } from "$lib/money";
     import AddCard from "$lib/components/AddCard.svelte";
     import type { Card as CardData } from "$lib/server/db/queries/cards";
+    import type { Goal } from "$lib/server/db/queries/savings-goals";
 
     let {
         card,
         showPaycheckNumber = false,
-        paydaySettings
+        paydaySettings,
+        goals = []
     }: {
         card: CardData;
         showPaycheckNumber?: boolean;
         paydaySettings?: { paydate: Date; frequency: number };
+        goals?: Goal[];
     } = $props();
 
     let editOpen = $state<boolean>(false);
@@ -34,9 +37,26 @@
     // floating-point drift. The only rounding is inside percentOfCents.
     function savingsCents(): number {
         return card.savings.method === "percent"
-            ? percentOfCents(card.payAmountCents, card.savings.basisPoints)
-            : card.savings.flatCents;
+            ? cardSavingsCents(card.payAmountCents, "percent", card.savings.basisPoints)
+            : cardSavingsCents(card.payAmountCents, "flat", card.savings.flatCents);
     }
+
+    // Where this card's savings went: each goal, then whatever is left as general.
+    let savingsBreakdown = $derived.by(() => {
+        if (card.goalAllocations.length === 0) {
+            return [];
+        }
+        const parts = card.goalAllocations.map((allocation) => ({
+            label: goals.find((goal) => goal.id === allocation.goalId)?.name ?? "Goal",
+            amountCents: allocation.amountCents
+        }));
+        const allocated = parts.reduce((sum, part) => sum + part.amountCents, 0);
+        const general = savingsCents() - allocated;
+        if (general > 0) {
+            parts.push({ label: "General", amountCents: general });
+        }
+        return parts;
+    });
 
     function takeHomeCents(): number {
         const reoccurTotal: number = card.reoccurBills.reduce(
@@ -89,7 +109,7 @@
                     >
                         <Pencil class="h-4 w-4" />
                     </Button>
-                    <AddCard cardToEdit={card} {paydaySettings} bind:open={editOpen} />
+                    <AddCard cardToEdit={card} {paydaySettings} {goals} bind:open={editOpen} />
                     <Dialog.Root bind:open={deleteOpen}>
                         <Dialog.Trigger
                             type="button"
@@ -146,7 +166,16 @@
             {/if}
         </Card.Content>
         <Card.Footer class="flex justify-between">
-            <p>Savings: {formatCents(savingsCents())}</p>
+            <div>
+                <p>Savings: {formatCents(savingsCents())}</p>
+                {#if savingsBreakdown.length > 0}
+                    <p class="text-sm text-muted-foreground">
+                        {savingsBreakdown
+                            .map((part) => `${part.label} ${formatCents(part.amountCents)}`)
+                            .join(" · ")}
+                    </p>
+                {/if}
+            </div>
             <p>Take Home: {formatCents(takeHomeCents())}</p>
         </Card.Footer>
     </Card.Root>
