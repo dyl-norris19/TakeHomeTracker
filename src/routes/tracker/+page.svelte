@@ -36,20 +36,33 @@
             this.atTop = this.el.scrollTop <= 0;
             this.atBottom = this.el.scrollTop + this.el.clientHeight >= this.el.scrollHeight - 1;
         };
+
+        // Nothing to scroll toward, so neither edge gets a fade.
+        clear = () => {
+            this.atTop = true;
+            this.atBottom = true;
+        };
     }
 
     const cardsFade = new ScrollFade();
     const goalsFade = new ScrollFade();
 
     // Re-measure after the list length changes, once the DOM has caught up.
+    // Reading `length` is also what subscribes these to rows being added or removed.
     $effect(() => {
-        userCards.length;
-        tick().then(cardsFade.update);
+        if (userCards.length > 0) {
+            tick().then(cardsFade.update);
+        } else {
+            cardsFade.clear();
+        }
     });
 
     $effect(() => {
-        sortedGoals.length;
-        tick().then(goalsFade.update);
+        if (sortedGoals.length > 0) {
+            tick().then(goalsFade.update);
+        } else {
+            goalsFade.clear();
+        }
     });
 
     function updateFades() {

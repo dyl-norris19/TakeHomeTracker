@@ -11,9 +11,10 @@
         thickness?: number;
     } = $props();
 
-    // The label shows the true percent (can pass 100); the arc stops at a full ring.
-    let percent = $derived(max > 0 ? Math.floor((value / max) * 100) : 0);
+    // Clamped to 0-100, so overshooting a goal reads as 100%.
     let fraction = $derived(max > 0 ? Math.min(Math.max(value / max, 0), 1) : 0);
+    // Derived from the clamped fraction, so the label and the arc can't disagree.
+    let percent = $derived(Math.floor(fraction * 100));
 
     let radius = $derived((size - thickness) / 2);
     let circumference = $derived(2 * Math.PI * radius);

@@ -220,3 +220,28 @@ export function validateGoalForm(values: GoalFormValues): GoalFormErrors {
 
 	return errors;
 }
+
+export type AdjustmentFormValues = {
+	// Always positive here; the +/− direction applies the sign on the server.
+	amountCents: number;
+	note: string;
+};
+
+export type AdjustmentFormErrors = Partial<Record<'amount' | 'note', string>>;
+
+/** Validates one goal adjustment. An empty object means it's good to save. */
+export function validateAdjustmentForm(values: AdjustmentFormValues): AdjustmentFormErrors {
+	const errors: AdjustmentFormErrors = {};
+
+	if (!Number.isInteger(values.amountCents)) {
+		errors.amount = 'Enter an amount.';
+	} else if (values.amountCents <= 0) {
+		errors.amount = 'Amount must be greater than 0.';
+	}
+
+	if (values.note.length > 200) {
+		errors.note = 'Keep the note under 200 characters.';
+	}
+
+	return errors;
+}

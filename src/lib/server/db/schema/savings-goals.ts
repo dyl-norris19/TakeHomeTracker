@@ -12,6 +12,20 @@ export const savingsGoals = sqliteTable('savings_goals', {
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
 });
 
+/**
+ * Money moved into or out of a goal from something other than a paycheck — a tax
+ * refund, a settlement, or pulling some back out for an emergency. Append-only
+ * history rather than a mutable total, so the note explaining each one survives.
+ */
+export const goalAdjustments = sqliteTable('goal_adjustments', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    goalId: integer('goal_id').notNull().references(() => savingsGoals.id),
+    // Signed: a negative amount is money taken back out.
+    amountCents: integer('amount_cents').notNull(),
+    note: text('note'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
+});
+
 export const cardGoalAllocations = sqliteTable(
     'card_goal_allocations',
     {

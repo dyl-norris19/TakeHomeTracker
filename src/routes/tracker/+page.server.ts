@@ -11,11 +11,18 @@ import {
     deleteCard as deleteCardRow
 } from '$lib/server/db/commands/cards';
 import { getGoalsByUser } from '$lib/server/db/queries/savings-goals';
-import { createGoal as insertGoal, setGoalCompleted } from '$lib/server/db/commands/savings-goals';
+import {
+    createGoal as insertGoal,
+    createGoalAdjustment as insertGoalAdjustment,
+    deleteGoalAdjustment as deleteGoalAdjustmentRow,
+    setGoalCompleted,
+    updateGoal as updateGoalRow
+} from '$lib/server/db/commands/savings-goals';
 import { getFormString } from '$lib/server/form-data';
 import {
     MONTHS,
     validateBills,
+    validateAdjustmentForm,
     validateCardForm,
     validateGoalForm,
     type CardFormValues,
@@ -378,6 +385,93 @@ export const actions: Actions = {
         await insertGoal(locals.user.id, values);
 
         return { goalSuccess: true };
+    },
+
+    updateGoal: async ({ request, locals }) => {
+        if (!locals.user) {
+            return fail(401);
+        }
+
+        const formData = await request.formData();
+        const goalId = Number(formData.get('goalId'));
+        if (!goalId || Number.isNaN(goalId)) {
+            return fail(400, { goalError: 'Invalid goal.' });
+        }
+
+        const values = {
+            name: getFormString(formData, 'name')?.trim() ?? '',
+            targetCents: parseToCents(getFormString(formData, 'targetAmount'))
+        };
+
+        const goalFieldErrors = validateGoalForm({ ...values, startingCents: 0 });
+        if (Object.keys(goalFieldErrors).length > 0) {
+            return fail(400, { goalError: 'Please fix the highlighted fields.', goalFieldErrors });
+        }
+
+        const updated = await updateGoalRow(locals.user.id, goalId, values);
+        if (!updated) {
+            return fail(404, { goalError: 'Goal not found.' });
+        }
+
+        return { goalSuccess: true };
+    },
+
+    adjustGoal: async ({ request, locals }) => {
+        if (!locals.user) {
+            return fail(401);
+        }
+
+        const formData = await request.formData();
+        const goalId = Number(formData.get('goalId'));
+        if (!goalId || Number.isNaN(goalId)) {
+            return fail(400, { adjustError: 'Invalid goal.' });
+        }
+
+        const direction = getFormString(formData, 'direction');
+        if (direction !== 'add' && direction !== 'withdraw') {
+            return fail(400, { adjustError: 'Pick add or take out.' });
+        }
+
+        const note = getFormString(formData, 'note')?.trim() ?? '';
+        const values = {
+            // The toggle owns the sign, so the typed amount is always positive.
+            amountCents: parseToCents(getFormString(formData, 'amount')),
+            note
+        };
+
+        const adjustFieldErrors = validateAdjustmentForm(values);
+        if (Object.keys(adjustFieldErrors).length > 0) {
+            return fail(400, { adjustError: 'Please fix the highlighted fields.', adjustFieldErrors });
+        }
+
+        const created = await insertGoalAdjustment(locals.user.id, goalId, {
+            amountCents: direction === 'withdraw' ? -values.amountCents : values.amountCents,
+            note: note || null
+        });
+        if (!created) {
+            return fail(404, { adjustError: 'Goal not found.' });
+        }
+
+        return { adjustSuccess: true };
+    },
+
+    deleteGoalAdjustment: async ({ request, locals }) => {
+        if (!locals.user) {
+            return fail(401);
+        }
+
+        const formData = await request.formData();
+        const adjustmentId = Number(formData.get('adjustmentId'));
+        if (!adjustmentId || Number.isNaN(adjustmentId)) {
+            return fail(400, { adjustError: 'Invalid entry.' });
+        }
+
+        const deleted = await deleteGoalAdjustmentRow(locals.user.id, adjustmentId);
+        if (!deleted) {
+            return fail(404, { adjustError: 'Entry not found.' });
+        }
+
+        return { adjustSuccess: true };
     },
 
     setGoalCompleted: async ({ request, locals }) => {

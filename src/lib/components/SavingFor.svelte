@@ -4,6 +4,8 @@
     import { enhance } from "$app/forms";
     import { formatCents } from "$lib/money";
     import DonutProgress from "$lib/components/DonutProgress.svelte";
+    import EditGoal from "$lib/components/EditGoal.svelte";
+    import AdjustGoal from "$lib/components/AdjustGoal.svelte";
     import type { Goal } from "$lib/server/db/queries/savings-goals";
 
     let { goal }: { goal: Goal } = $props();
@@ -20,7 +22,13 @@
 
 <Card.Root class="w-full" data-closed={closed}>
     <Card.Header class="pb-2">
-        <Card.Title class="text-base">{goal.name}</Card.Title>
+        <div class="flex items-start justify-between gap-2">
+            <Card.Title class="min-w-0 text-base">{goal.name}</Card.Title>
+            <div class="flex shrink-0 items-center gap-0.5">
+                <AdjustGoal {goal} />
+                <EditGoal {goal} />
+            </div>
+        </div>
         {#if badges}
             <Card.Description>{badges}</Card.Description>
         {/if}

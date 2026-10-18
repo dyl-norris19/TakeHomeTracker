@@ -161,17 +161,22 @@
                 otherBills = [];
                 notes = "";
             }
-            // Closed goals stay listed so they can keep growing past the target.
-            goalAmounts = goals.map((goal) => {
+            goalAmounts = goals.flatMap((goal) => {
                 const existing = cardToEdit?.goalAllocations.find(
                     (allocation) => allocation.goalId === goal.id
                 );
-                return {
-                    goalId: goal.id,
-                    name: goal.name,
-                    closed: goal.completedAt !== null,
-                    amount: existing ? centsToInput(existing.amountCents) : ""
-                };
+                
+                if (goal.completedAt !== null && !existing) {
+                    return [];
+                }
+                return [
+                    {
+                        goalId: goal.id,
+                        name: goal.name,
+                        closed: goal.completedAt !== null,
+                        amount: existing ? centsToInput(existing.amountCents) : ""
+                    }
+                ];
             });
             confirmDuplicate = false;
             fieldErrors = {};

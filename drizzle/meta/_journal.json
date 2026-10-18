@@ -57,6 +57,13 @@
       "when": 1789344207766,
       "tag": "0007_create_savings_goals",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1792359341335,
+      "tag": "0008_create_goal_adjustments",
+      "breakpoints": true
     }
   ]
 }
