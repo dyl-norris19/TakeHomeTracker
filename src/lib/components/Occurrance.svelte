@@ -93,7 +93,7 @@
 </script>
 
 <div>
-    <Card.Root class="max-w-[50vw] w-full mx-auto">
+    <Card.Root class="max-w-[960px] w-full mx-auto">
         <Card.Header>
             <Card.Title class="flex justify-between items-center">
                 <p>{title}</p>

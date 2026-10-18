@@ -116,7 +116,7 @@
     let otherBills = $state<{ name: string; amount: string | number }[]>([]);
     let notes = $state<string>("");
     let goalAmounts = $state<
-        { goalId: number; name: string; completed: boolean; amount: string | number }[]
+        { goalId: number; name: string; closed: boolean; amount: string | number }[]
     >([]);
 
     let otherBillsEditing = $state<boolean>(false);
@@ -161,7 +161,7 @@
                 otherBills = [];
                 notes = "";
             }
-            // Completed goals stay listed so they can keep growing past the target.
+            // Closed goals stay listed so they can keep growing past the target.
             goalAmounts = goals.map((goal) => {
                 const existing = cardToEdit?.goalAllocations.find(
                     (allocation) => allocation.goalId === goal.id
@@ -169,7 +169,7 @@
                 return {
                     goalId: goal.id,
                     name: goal.name,
-                    completed: goal.completedAt !== null,
+                    closed: goal.completedAt !== null,
                     amount: existing ? centsToInput(existing.amountCents) : ""
                 };
             });
@@ -398,7 +398,7 @@
                     <div class="grid grid-cols-4 items-center gap-4">
                         {#each goalAmounts as row (row.goalId)}
                             <Label for="goal-{row.goalId}" class="text-right">
-                                {row.name}{row.completed ? " (complete)" : ""}
+                                {row.name}{row.closed ? " (closed)" : ""}
                             </Label>
                             <Input
                                 id="goal-{row.goalId}"

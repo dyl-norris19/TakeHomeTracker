@@ -2,8 +2,8 @@
     let {
         value,
         max,
-        size = 72,
-        thickness = 8
+        size = 120,
+        thickness = 12
     }: {
         value: number;
         max: number;
@@ -17,6 +17,9 @@
 
     let radius = $derived((size - thickness) / 2);
     let circumference = $derived(2 * Math.PI * radius);
+
+    // Scales with the ring so the label stays proportional at any size.
+    let fontSize = $derived(size * 0.22);
 </script>
 
 <svg
@@ -25,6 +28,7 @@
     viewBox="0 0 {size} {size}"
     role="img"
     aria-label="{percent}% of goal"
+    class="shrink-0"
 >
     <circle
         cx={size / 2}
@@ -52,7 +56,8 @@
         y="50%"
         text-anchor="middle"
         dominant-baseline="central"
-        class="fill-foreground text-xs font-semibold"
+        font-size={fontSize}
+        class="fill-foreground font-semibold"
     >
         {percent}%
     </text>
