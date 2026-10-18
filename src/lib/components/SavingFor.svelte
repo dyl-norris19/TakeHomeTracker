@@ -1,19 +1,56 @@
 <script lang="ts">
     import * as Card from "$lib/components/ui/card/index.js";
+    import { Button } from "$lib/components/ui/button/index";
+    import { enhance } from "$app/forms";
+    import { formatCents } from "$lib/money";
+    import DonutProgress from "$lib/components/DonutProgress.svelte";
+    import EditGoal from "$lib/components/EditGoal.svelte";
+    import AdjustGoal from "$lib/components/AdjustGoal.svelte";
+    import DeleteGoal from "$lib/components/DeleteGoal.svelte";
+    import type { Goal } from "$lib/server/db/queries/savings-goals";
+
+    let { goal }: { goal: Goal } = $props();
+
+    // "completed" is the fact that the target was reached, "closed" is the 
+    // decision to stop funding it.
+    let closed = $derived(goal.completedAt !== null);
+    let completed = $derived(goal.savedCents >= goal.targetCents);
+
+    let badges = $derived(
+        [completed ? "Completed ✓" : null, closed ? "Closed" : null].filter(Boolean).join(" · ")
+    );
 </script>
 
-<div>
-    <Card.Root class="max-w-[20vw] w-full mx-auto">
-        <Card.Header>
-            <Card.Title>
-                Vacation!
-            </Card.Title>
-        </Card.Header>
-        <Card.Content>
-            Money Saved: $345
-        </Card.Content>
-        <Card.Footer>
-            Savings left: $234
-        </Card.Footer>
-    </Card.Root>
-</div>
+<Card.Root class="w-full" data-closed={closed}>
+    <Card.Header class="pb-2">
+        <div class="flex items-start justify-between gap-2">
+            <Card.Title class="min-w-0 text-base">{goal.name}</Card.Title>
+            <div class="-mr-1 -mt-1 flex shrink-0 items-center gap-0.5">
+                <AdjustGoal {goal} />
+                <EditGoal {goal} />
+                {#if !goal.hasCardAllocations}
+                    <!-- A goal a card funds is closed instead of deleted. -->
+                    <DeleteGoal {goal} />
+                {/if}
+            </div>
+        </div>
+        {#if badges}
+            <Card.Description>{badges}</Card.Description>
+        {/if}
+    </Card.Header>
+    <Card.Content class="flex items-center gap-4">
+        <DonutProgress value={goal.savedCents} max={goal.targetCents} />
+        <p class="min-w-0 text-sm">
+            {formatCents(goal.savedCents)} / {formatCents(goal.targetCents)}
+        </p>
+    </Card.Content>
+    <Card.Footer>
+        <form method="POST" action="?/setGoalCompleted" use:enhance>
+            <input type="hidden" name="goalId" value={goal.id} />
+            <input type="hidden" name="completed" value={!closed} />
+            <Button type="submit" variant="secondary" size="sm">
+                {closed ? "Reopen" : "Close"}
+            </Button>
+        </form>
+    </Card.Footer>
+</Card.Root>

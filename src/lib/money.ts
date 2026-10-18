@@ -45,6 +45,18 @@ export function percentOfCents(cents: number, basisPoints: number): number {
 	return Math.round((cents * basisPoints) / 10000);
 }
 
+/**
+ * A card's savings in cents. `value` is cents for a flat method and basis
+ * points for a percent method (see CardFormValues.savingsValue).
+ */
+export function savingsCents(
+	payAmountCents: number,
+	method: 'percent' | 'flat',
+	value: number
+): number {
+	return method === 'percent' ? percentOfCents(payAmountCents, value) : value;
+}
+
 const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 /** Integer cents -> a display string like `$1,234.50`. */
