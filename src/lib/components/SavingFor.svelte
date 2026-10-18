@@ -6,6 +6,7 @@
     import DonutProgress from "$lib/components/DonutProgress.svelte";
     import EditGoal from "$lib/components/EditGoal.svelte";
     import AdjustGoal from "$lib/components/AdjustGoal.svelte";
+    import DeleteGoal from "$lib/components/DeleteGoal.svelte";
     import type { Goal } from "$lib/server/db/queries/savings-goals";
 
     let { goal }: { goal: Goal } = $props();
@@ -24,9 +25,13 @@
     <Card.Header class="pb-2">
         <div class="flex items-start justify-between gap-2">
             <Card.Title class="min-w-0 text-base">{goal.name}</Card.Title>
-            <div class="flex shrink-0 items-center gap-0.5">
+            <div class="-mr-1 -mt-1 flex shrink-0 items-center gap-0.5">
                 <AdjustGoal {goal} />
                 <EditGoal {goal} />
+                {#if !goal.hasCardAllocations}
+                    <!-- A goal a card funds is closed instead of deleted. -->
+                    <DeleteGoal {goal} />
+                {/if}
             </div>
         </div>
         {#if badges}

@@ -54,7 +54,7 @@
         type="button"
         class={cn(
             buttonVariants({ variant: "ghost", size: "icon" }),
-            "-mt-1 h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+            "h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
         )}
         aria-label="Add or remove money from {goal.name}"
     >

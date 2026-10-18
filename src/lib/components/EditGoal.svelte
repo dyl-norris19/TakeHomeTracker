@@ -53,7 +53,7 @@
         type="button"
         class={cn(
             buttonVariants({ variant: "ghost", size: "icon" }),
-            "-mr-1 -mt-1 h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+            "h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
         )}
         aria-label="Edit {goal.name}"
     >

@@ -14,6 +14,7 @@ import { getGoalsByUser } from '$lib/server/db/queries/savings-goals';
 import {
     createGoal as insertGoal,
     createGoalAdjustment as insertGoalAdjustment,
+    deleteGoal as deleteGoalRow,
     deleteGoalAdjustment as deleteGoalAdjustmentRow,
     setGoalCompleted,
     updateGoal as updateGoalRow
@@ -414,6 +415,32 @@ export const actions: Actions = {
         }
 
         return { goalSuccess: true };
+    },
+
+    deleteGoal: async ({ request, locals }) => {
+        if (!locals.user) {
+            return fail(401);
+        }
+
+        const formData = await request.formData();
+        const goalId = Number(formData.get('goalId'));
+        if (!goalId || Number.isNaN(goalId)) {
+            return fail(400, { goalError: 'Invalid goal.' });
+        }
+
+        const result = await deleteGoalRow(locals.user.id, goalId);
+        if (!result.deleted) {
+            if (result.reason === 'funded-by-cards') {
+                // Only reachable if a card funded the goal after the page
+                // rendered, since the button is hidden otherwise.
+                return fail(409, {
+                    goalError: 'A card is putting money into that goal — close it instead.'
+                });
+            }
+            return fail(404, { goalError: 'Goal not found.' });
+        }
+
+        return { goalDeleted: true };
     },
 
     adjustGoal: async ({ request, locals }) => {

@@ -1,6 +1,10 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/index';
-import { goalAdjustments, savingsGoals } from '$lib/server/db/schema/savings-goals';
+import {
+    cardGoalAllocations,
+    goalAdjustments,
+    savingsGoals
+} from '$lib/server/db/schema/savings-goals';
 
 export async function createGoal(
     userId: number,
@@ -94,5 +98,46 @@ export async function deleteGoalAdjustment(userId: number, adjustmentId: number)
         }
 
         return tx.delete(goalAdjustments).where(eq(goalAdjustments.id, row.id)).returning().get();
+    });
+}
+
+export type DeleteGoalResult =
+    | { deleted: true }
+    | { deleted: false; reason: 'not-found' | 'funded-by-cards' };
+
+/**
+ * Deletes a goal and its adjustments, but only while no card has allocated to
+ * it — that money belongs to the card's record, not the goal's.
+ */
+export async function deleteGoal(userId: number, goalId: number): Promise<DeleteGoalResult> {
+    // Annotated so the literal returns below narrow to DeleteGoalResult instead
+    // of widening `reason` to string.
+    return db.transaction((tx): DeleteGoalResult => {
+        const goal = tx
+            .select({ id: savingsGoals.id })
+            .from(savingsGoals)
+            .where(and(eq(savingsGoals.id, goalId), eq(savingsGoals.userId, userId)))
+            .get();
+        if (!goal) {
+            return { deleted: false, reason: 'not-found' };
+        }
+
+        // Existence, not sums: a card that allocated and then zeroed the line
+        // still leaves a row.
+        const allocation = tx
+            .select({ id: cardGoalAllocations.id })
+            .from(cardGoalAllocations)
+            .where(eq(cardGoalAllocations.goalId, goal.id))
+            .get();
+        if (allocation) {
+            return { deleted: false, reason: 'funded-by-cards' };
+        }
+
+        // Children first, as deleteCard does.
+        tx.delete(goalAdjustments).where(eq(goalAdjustments.goalId, goal.id)).run();
+
+        tx.delete(savingsGoals).where(eq(savingsGoals.id, goal.id)).run();
+
+        return { deleted: true };
     });
 }

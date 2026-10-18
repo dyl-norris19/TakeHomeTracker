@@ -19,6 +19,8 @@ export type Goal = {
     savedCents: number;
     // Newest first.
     adjustments: GoalAdjustment[];
+    // True once any card has allocated to this goal, which is what blocks a delete.
+    hasCardAllocations: boolean;
     completedAt: Date | null;
 };
 
@@ -88,6 +90,8 @@ export async function getGoalsByUser(userId: number): Promise<Goal[]> {
             (allocatedByGoal.get(row.id) ?? 0) +
             (adjustedByGoal.get(row.id) ?? 0),
         adjustments: adjustmentsByGoal.get(row.id) ?? [],
+        // `has` rather than a sum: a zeroed-out allocation still leaves a row.
+        hasCardAllocations: allocatedByGoal.has(row.id),
         completedAt: row.completedAt
     }));
 }
