@@ -22,6 +22,7 @@ import {
 import { getFormString } from '$lib/server/form-data';
 import {
     MONTHS,
+    cardBudget,
     validateBills,
     validateAdjustmentForm,
     validateCardForm,
@@ -29,15 +30,27 @@ import {
     type CardFormValues,
     type GoalAllocationInput
 } from '$lib/validation';
-import { parsePercentToBasisPoints, parseToCents } from '$lib/money';
+import {
+    parsePercentToBasisPoints,
+    parseToCents,
+    type BudgetMode,
+    type CardBudget
+} from '$lib/money';
 import { isMonthly, parseMonthValue, resolvePaydate, type PaydaySettings } from '$lib/paydates';
 
-function parseSavingsMethod(raw: string): 'percent' | 'flat' | null {
+function parseBudgetMethod(raw: string): 'percent' | 'flat' | null {
     if (raw === '%') {
         return 'percent';
     }
     if (raw === 'flat') {
         return 'flat';
+    }
+    return null;
+}
+
+function parseBudgetMode(raw: string): BudgetMode | null {
+    if (raw === 'splurge' || raw === 'save') {
+        return raw;
     }
     return null;
 }
@@ -107,25 +120,26 @@ async function checkGoalOwnership(userId: number, allocations: GoalAllocationInp
 }
 
 type ParsedCard =
-    | { ok: true; values: CardFormValues; monthName: string; payDate: Date }
+    | { ok: true; values: CardFormValues; budget: CardBudget; monthName: string; payDate: Date }
     | { ok: false; failure: ReturnType<typeof fail> };
 
 function parseCardSubmission(formData: FormData, paydaySettings: PaydaySettings): ParsedCard {
     const parsedMonth = parseMonthValue(getFormString(formData, 'month') ?? '');
     const monthly = isMonthly(paydaySettings);
-    const savingsMethod = parseSavingsMethod(getFormString(formData, 'savingsType') ?? '');
-    const rawSavings = getFormString(formData, 'savingsAmount');
+    const budgetMethod = parseBudgetMethod(getFormString(formData, 'budgetType') ?? '');
+    const rawBudget = getFormString(formData, 'budgetAmount');
     const rawNotes = getFormString(formData, 'notes')?.trim() ?? '';
     const values: CardFormValues = {
         year: parsedMonth?.year ?? Number.NaN,
         monthIndex: parsedMonth?.monthIndex ?? Number.NaN,
         paycheckNumber: monthly ? 1 : Number(getFormString(formData, 'paycheckNumber')),
         payAmountCents: parseToCents(getFormString(formData, 'payAmount')),
-        savingsMethod,
-        savingsValue:
-            savingsMethod === 'percent'
-                ? parsePercentToBasisPoints(rawSavings)
-                : parseToCents(rawSavings),
+        budgetMode: parseBudgetMode(getFormString(formData, 'budgetMode') ?? ''),
+        budgetMethod,
+        budgetValue:
+            budgetMethod === 'percent'
+                ? parsePercentToBasisPoints(rawBudget)
+                : parseToCents(rawBudget),
         reoccurBills: parseBills(formData.get('reoccurBills')),
         otherBills: parseBills(formData.get('otherBills')),
         goalAllocations: parseGoalAllocations(formData.get('goalAllocations')),
@@ -156,7 +170,13 @@ function parseCardSubmission(formData: FormData, paydaySettings: PaydaySettings)
         };
     }
 
-    return { ok: true, values, monthName: MONTHS[values.monthIndex], payDate };
+    return {
+        ok: true,
+        values,
+        budget: cardBudget(values)!,
+        monthName: MONTHS[values.monthIndex],
+        payDate
+    };
 }
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -230,7 +250,7 @@ export const actions: Actions = {
         if (!parsed.ok) {
             return parsed.failure;
         }
-        const { values, monthName, payDate } = parsed;
+        const { values, budget, monthName, payDate } = parsed;
         const monthly = isMonthly(paydaySettings);
 
         const ownershipFailure = await checkGoalOwnership(locals.user.id, values.goalAllocations!);
@@ -260,10 +280,7 @@ export const actions: Actions = {
             paycheckNumber: values.paycheckNumber,
             payAmountCents: values.payAmountCents,
             payDate,
-            savings:
-                values.savingsMethod === 'percent'
-                    ? { method: 'percent', basisPoints: values.savingsValue }
-                    : { method: 'flat', flatCents: values.savingsValue },
+            budget,
             reoccurBills: values.reoccurBills!,
             otherBills: values.otherBills!,
             goalAllocations: values.goalAllocations!,
@@ -295,7 +312,7 @@ export const actions: Actions = {
         if (!parsed.ok) {
             return parsed.failure;
         }
-        const { values, monthName, payDate } = parsed;
+        const { values, budget, monthName, payDate } = parsed;
         const monthly = isMonthly(paydaySettings);
 
         const ownershipFailure = await checkGoalOwnership(locals.user.id, values.goalAllocations!);
@@ -328,10 +345,7 @@ export const actions: Actions = {
             paycheckNumber: values.paycheckNumber,
             payAmountCents: values.payAmountCents,
             payDate,
-            savings:
-                values.savingsMethod === 'percent'
-                    ? { method: 'percent', basisPoints: values.savingsValue }
-                    : { method: 'flat', flatCents: values.savingsValue },
+            budget,
             reoccurBills: values.reoccurBills!,
             otherBills: values.otherBills!,
             goalAllocations: values.goalAllocations!,

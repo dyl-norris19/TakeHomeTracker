@@ -45,16 +45,38 @@ export function percentOfCents(cents: number, basisPoints: number): number {
 	return Math.round((cents * basisPoints) / 10000);
 }
 
-/**
- * A card's savings in cents. `value` is cents for a flat method and basis
- * points for a percent method (see CardFormValues.savingsValue).
- */
-export function savingsCents(
-	payAmountCents: number,
-	method: 'percent' | 'flat',
-	value: number
-): number {
-	return method === 'percent' ? percentOfCents(payAmountCents, value) : value;
+export type BudgetMode = 'splurge' | 'save';
+
+export type BudgetMethod = 'percent' | 'flat';
+
+export type CardBudget = { mode: BudgetMode } & (
+	| { method: 'flat'; flatCents: number }
+	| { method: 'percent'; basisPoints: number }
+);
+
+export function sumBills(bills: readonly { amountCents: number }[]): number {
+	return bills.reduce((sum, bill) => sum + bill.amountCents, 0);
+}
+
+function budgetAmountCents(payAmountCents: number, budget: CardBudget): number {
+	return budget.method === 'percent'
+		? percentOfCents(payAmountCents, budget.basisPoints)
+		: budget.flatCents;
+}
+
+export function budgetBreakdown(card: {
+	payAmountCents: number;
+	budget: CardBudget;
+	reoccurBills: readonly { amountCents: number }[];
+	otherBills: readonly { amountCents: number }[];
+}): { savingsCents: number; takeHomeCents: number } {
+	const amount = budgetAmountCents(card.payAmountCents, card.budget);
+	const afterBills =
+		card.payAmountCents - sumBills(card.reoccurBills) - sumBills(card.otherBills);
+
+	return card.budget.mode === 'save'
+		? { savingsCents: afterBills - amount, takeHomeCents: amount }
+		: { savingsCents: amount, takeHomeCents: afterBills - amount };
 }
 
 const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });

@@ -4,6 +4,7 @@
     import { Input } from "$lib/components/ui/input/index";
     import { Label } from "$lib/components/ui/label/index";
     import { Separator } from "$lib/components/ui/separator/index";
+    import SegmentedToggle from "$lib/components/SegmentedToggle.svelte";
     import { enhance } from "$app/forms";
     import { cn } from "$lib/utils.js";
     import Diff from "@lucide/svelte/icons/diff";
@@ -110,34 +111,13 @@
                     <Label for="adjust-{goal.id}-amount" class="text-right">Amount ($)</Label>
                     <div class="col-span-3 flex items-center gap-2">
                         <!-- The toggle owns the sign so the amount box never needs a minus. -->
-                        <div class="flex shrink-0 overflow-hidden rounded-md border">
-                            <button
-                                type="button"
-                                class="px-2.5 py-1.5 text-sm font-semibold transition-colors"
-                                class:bg-muted={direction === "add"}
-                                class:text-foreground={direction === "add"}
-                                class:text-muted-foreground={direction !== "add"}
-                                class:hover:text-foreground={direction !== "add"}
-                                aria-pressed={direction === "add"}
-                                aria-label="Add money"
-                                onclick={() => (direction = "add")}
-                            >
-                                +
-                            </button>
-                            <button
-                                type="button"
-                                class="border-l px-2.5 py-1.5 text-sm font-semibold transition-colors"
-                                class:bg-muted={direction === "withdraw"}
-                                class:text-foreground={direction === "withdraw"}
-                                class:text-muted-foreground={direction !== "withdraw"}
-                                class:hover:text-foreground={direction !== "withdraw"}
-                                aria-pressed={direction === "withdraw"}
-                                aria-label="Take money out"
-                                onclick={() => (direction = "withdraw")}
-                            >
-                                −
-                            </button>
-                        </div>
+                        <SegmentedToggle
+                            bind:value={direction}
+                            options={[
+                                { value: "add", label: "+", ariaLabel: "Add money" },
+                                { value: "withdraw", label: "−", ariaLabel: "Take money out" }
+                            ]}
+                        />
                         <Input
                             id="adjust-{goal.id}-amount"
                             name="amount"

@@ -2,7 +2,8 @@ import { and, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/index';
 import { cards } from '$lib/server/db/schema/cards';
 import { cardGoalAllocations } from '$lib/server/db/schema/savings-goals';
-import type { CardBill, CardGoalAllocation, CardSavings } from '$lib/server/db/queries/cards';
+import type { CardBill, CardGoalAllocation } from '$lib/server/db/queries/cards';
+import type { CardBudget } from '$lib/money';
 
 export type CardWriteData = {
     month: string;
@@ -10,7 +11,7 @@ export type CardWriteData = {
     paycheckNumber: number;
     payAmountCents: number;
     payDate: Date;
-    savings: CardSavings;
+    budget: CardBudget;
     reoccurBills: CardBill[];
     otherBills: CardBill[];
     goalAllocations: CardGoalAllocation[];
@@ -24,9 +25,10 @@ function cardColumns(data: CardWriteData) {
         paycheckNumber: data.paycheckNumber,
         payAmountCents: data.payAmountCents,
         payDate: data.payDate,
-        savingsMethod: data.savings.method,
-        savingsFlatCents: data.savings.method === 'flat' ? data.savings.flatCents : null,
-        savingsBasisPoints: data.savings.method === 'percent' ? data.savings.basisPoints : null,
+        budgetMode: data.budget.mode,
+        budgetMethod: data.budget.method,
+        budgetFlatCents: data.budget.method === 'flat' ? data.budget.flatCents : null,
+        budgetBasisPoints: data.budget.method === 'percent' ? data.budget.basisPoints : null,
         recurringBillsSnapshot: JSON.stringify(data.reoccurBills),
         otherBills: JSON.stringify(data.otherBills),
         notes: data.notes

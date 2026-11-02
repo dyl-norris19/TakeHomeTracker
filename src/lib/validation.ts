@@ -1,4 +1,4 @@
-import { savingsCents } from './money';
+import { budgetBreakdown, type BudgetMethod, type BudgetMode, type CardBudget } from './money';
 
 // Basic shape check: something, an @, dot-separated labels, at least one dot.
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
@@ -32,8 +32,6 @@ export function monthNameToIndex(name: string): number {
 	return (MONTHS as readonly string[]).indexOf(name);
 }
 
-export type SavingsMethod = 'percent' | 'flat';
-
 /** A bill as it's stored/computed: an integer-cents amount. */
 export type CardBillInput = { name: string; amountCents: number };
 
@@ -45,10 +43,11 @@ export type CardFormValues = {
 	monthIndex: number;
 	paycheckNumber: number;
 	payAmountCents: number;
-	savingsMethod: SavingsMethod | null;
+	budgetMode: BudgetMode | null;
+	budgetMethod: BudgetMethod | null;
 	// Cents when the method is flat, basis points (hundredths of a percent) when
 	// it's percent. Both are just a user number scaled by 100.
-	savingsValue: number;
+	budgetValue: number;
 	reoccurBills: CardBillInput[] | null;
 	otherBills: CardBillInput[] | null;
 	goalAllocations: GoalAllocationInput[] | null;
@@ -59,8 +58,8 @@ export type CardFormField =
 	| 'month'
 	| 'paycheckNumber'
 	| 'payAmount'
-	| 'savingsType'
-	| 'savingsAmount'
+	| 'budgetType'
+	| 'budgetAmount'
 	| 'reoccurBills'
 	| 'otherBills'
 	| 'goalAllocations';
@@ -91,6 +90,84 @@ export function validateBills(bills: CardBillInput[] | null, label: string): str
 	return null;
 }
 
+export function cardBudget(values: CardFormValues): CardBudget | null {
+	if (!values.budgetMode || !values.budgetMethod || !Number.isInteger(values.budgetValue)) {
+		return null;
+	}
+	return values.budgetMethod === 'percent'
+		? { mode: values.budgetMode, method: 'percent', basisPoints: values.budgetValue }
+		: { mode: values.budgetMode, method: 'flat', flatCents: values.budgetValue };
+}
+
+export function cardBreakdown(
+	values: CardFormValues
+): { savingsCents: number; takeHomeCents: number } | null {
+	const budget = cardBudget(values);
+	if (
+		!budget ||
+		!Number.isInteger(values.payAmountCents) ||
+		values.reoccurBills === null ||
+		values.otherBills === null ||
+		values.reoccurBills.some((bill) => !Number.isInteger(bill.amountCents)) ||
+		values.otherBills.some((bill) => !Number.isInteger(bill.amountCents))
+	) {
+		return null;
+	}
+	return budgetBreakdown({
+		payAmountCents: values.payAmountCents,
+		budget,
+		reoccurBills: values.reoccurBills,
+		otherBills: values.otherBills
+	});
+}
+
+const BUDGET_MESSAGES = {
+	splurge: {
+		method: 'Choose how you save.',
+		missing: 'Enter a savings amount.',
+		negative: "Savings amount can't be negative.",
+		overPercent: "A savings percentage can't be over 100."
+	},
+	save: {
+		method: 'Choose how your allowance is set.',
+		missing: 'Enter an allowance amount.',
+		negative: "Allowance can't be negative.",
+		overPercent: "An allowance percentage can't be over 100."
+	}
+} as const;
+
+function overspentAllowance(values: CardFormValues): boolean {
+	const breakdown = cardBreakdown(values);
+	return breakdown !== null && breakdown.savingsCents < 0;
+}
+
+type BudgetErrors = Pick<CardFormErrors, 'budgetType' | 'budgetAmount'>;
+
+function validateBudget(values: CardFormValues): BudgetErrors {
+	if (!values.budgetMode) {
+		return { budgetType: 'Choose save or splurge.' };
+	}
+
+	const messages = BUDGET_MESSAGES[values.budgetMode];
+	const errors: BudgetErrors = {};
+
+	if (!values.budgetMethod) {
+		errors.budgetType = messages.method;
+	}
+
+	if (!Number.isInteger(values.budgetValue)) {
+		errors.budgetAmount = messages.missing;
+	} else if (values.budgetValue < 0) {
+		errors.budgetAmount = messages.negative;
+	} else if (values.budgetMethod === 'percent' && values.budgetValue > 10000) {
+		errors.budgetAmount = messages.overPercent;
+	} else if (values.budgetMode === 'save' && overspentAllowance(values)) {
+		errors.budgetAmount = 'Your allowance is more than this paycheck has left after bills.';
+	}
+
+	return errors;
+}
+
 /**
  * Validates a card submission. Returns a map of field -> message; an empty
  * object means the card is good to save.
@@ -117,17 +194,7 @@ export function validateCardForm(values: CardFormValues): CardFormErrors {
 		errors.payAmount = 'Pay amount must be greater than 0.';
 	}
 
-	if (!values.savingsMethod) {
-		errors.savingsType = 'Choose how you save.';
-	}
-
-	if (!Number.isInteger(values.savingsValue)) {
-		errors.savingsAmount = 'Enter a savings amount.';
-	} else if (values.savingsValue < 0) {
-		errors.savingsAmount = "Savings amount can't be negative.";
-	} else if (values.savingsMethod === 'percent' && values.savingsValue > 10000) {
-		errors.savingsAmount = "A savings percentage can't be over 100.";
-	}
+	Object.assign(errors, validateBudget(values));
 
 	const reoccurError = validateBills(values.reoccurBills, 'reoccuring bills');
 	if (reoccurError) {
@@ -173,19 +240,9 @@ function validateGoalAllocations(values: CardFormValues): string | null {
 	}
 	// Only compare against savings once the savings itself is valid; otherwise
 	// the savings field already carries the error.
-	if (
-		values.savingsMethod &&
-		Number.isInteger(values.savingsValue) &&
-		Number.isInteger(values.payAmountCents)
-	) {
-		const available = savingsCents(
-			values.payAmountCents,
-			values.savingsMethod,
-			values.savingsValue
-		);
-		if (total > available) {
-			return "Goal amounts add up to more than this card's savings.";
-		}
+	const breakdown = cardBreakdown(values);
+	if (breakdown && total > breakdown.savingsCents) {
+		return "Goal amounts add up to more than this card's savings.";
 	}
 	return null;
 }

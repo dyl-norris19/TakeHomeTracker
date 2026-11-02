@@ -8,6 +8,7 @@
     import * as Dialog from "$lib/components/ui/dialog/index";
     import { enhance } from "$app/forms";
     import {
+        cardBreakdown,
         validateCardForm,
         type CardFormErrors,
         type CardFormValues
@@ -18,7 +19,7 @@
         formatCents,
         parsePercentToBasisPoints,
         parseToCents,
-        savingsCents
+        type BudgetMode
     } from "$lib/money";
     import {
         isMonthly,
@@ -33,6 +34,7 @@
     import type { Card } from "$lib/server/db/queries/cards";
     import type { Goal } from "$lib/server/db/queries/savings-goals";
     import BillListEditor from "$lib/components/BillListEditor.svelte";
+    import SegmentedToggle from "$lib/components/SegmentedToggle.svelte";
 
     let {
         recurringBills = [],
@@ -110,8 +112,9 @@
     });
 
     let payAmount = $state<string | number>("");
-    let savingsType = $state<string>("");
-    let savingsAmount = $state<string | number>("");
+    let budgetMode = $state<BudgetMode>("splurge");
+    let budgetType = $state<string>("");
+    let budgetAmount = $state<string | number>("");
     let reoccurBills = $state<{ name: string; amount: string | number }[]>([]);
     let otherBills = $state<{ name: string; amount: string | number }[]>([]);
     let notes = $state<string>("");
@@ -132,11 +135,12 @@
                 selectedMonth = toMonthValue(cardToEdit.year, monthNameToIndex(cardToEdit.month));
                 paycheckNumber = String(cardToEdit.paycheckNumber);
                 payAmount = centsToInput(cardToEdit.payAmountCents);
-                savingsType = cardToEdit.savings.method === "percent" ? "%" : "flat";
-                savingsAmount =
-                    cardToEdit.savings.method === "percent"
-                        ? basisPointsToInput(cardToEdit.savings.basisPoints)
-                        : centsToInput(cardToEdit.savings.flatCents);
+                budgetMode = cardToEdit.budget.mode;
+                budgetType = cardToEdit.budget.method === "percent" ? "%" : "flat";
+                budgetAmount =
+                    cardToEdit.budget.method === "percent"
+                        ? basisPointsToInput(cardToEdit.budget.basisPoints)
+                        : centsToInput(cardToEdit.budget.flatCents);
                 reoccurBills = cardToEdit.reoccurBills.map((bill) => ({
                     name: bill.name,
                     amount: centsToInput(bill.amountCents)
@@ -152,8 +156,9 @@
                 selectedMonth = nearest?.value ?? "";
                 paycheckNumber = nearest ? String(nearest.paycheckNumber) : "1";
                 payAmount = "";
-                savingsType = "";
-                savingsAmount = "";
+                budgetMode = "splurge";
+                budgetType = "";
+                budgetAmount = "";
                 reoccurBills = recurringBills.map((bill) => ({
                     name: bill.name,
                     amount: centsToInput(bill.amountCents)
@@ -185,9 +190,11 @@
         }
     });
 
-    let savingsMethod = $derived<"percent" | "flat" | null>(
-        savingsType === "%" ? "percent" : savingsType === "flat" ? "flat" : null
+    let budgetMethod = $derived<"percent" | "flat" | null>(
+        budgetType === "%" ? "percent" : budgetType === "flat" ? "flat" : null
     );
+
+    let saving = $derived(budgetMode === "save");
 
     function goalAllocationValues(): { goalId: number; amountCents: number }[] {
         return goalAmounts
@@ -195,38 +202,18 @@
             .map((row) => ({ goalId: row.goalId, amountCents: parseToCents(row.amount) }));
     }
 
-    // Savings left after goals — the general/rainy-day portion. Null until the
-    // savings and goal amounts are all valid numbers.
-    let generalSavingsCents = $derived.by(() => {
-        const payCents = parseToCents(payAmount);
-        const value =
-            savingsMethod === "percent"
-                ? parsePercentToBasisPoints(savingsAmount)
-                : parseToCents(savingsAmount);
-        const allocations = goalAllocationValues();
-        if (
-            !savingsMethod ||
-            !Number.isInteger(value) ||
-            !Number.isInteger(payCents) ||
-            allocations.some((allocation) => !Number.isInteger(allocation.amountCents))
-        ) {
-            return null;
-        }
-        const allocated = allocations.reduce((sum, allocation) => sum + allocation.amountCents, 0);
-        return savingsCents(payCents, savingsMethod, value) - allocated;
-    });
-
     function currentValues(): CardFormValues {
         return {
             year: parsedMonth?.year ?? Number.NaN,
             monthIndex: parsedMonth?.monthIndex ?? Number.NaN,
             paycheckNumber: monthly ? 1 : Number(paycheckNumber),
             payAmountCents: parseToCents(payAmount),
-            savingsMethod,
-            savingsValue:
-                savingsMethod === "percent"
-                    ? parsePercentToBasisPoints(savingsAmount)
-                    : parseToCents(savingsAmount),
+            budgetMode,
+            budgetMethod,
+            budgetValue:
+                budgetMethod === "percent"
+                    ? parsePercentToBasisPoints(budgetAmount)
+                    : parseToCents(budgetAmount),
             reoccurBills: reoccurBills.map((bill) => ({
                 name: bill.name,
                 amountCents: parseToCents(bill.amount)
@@ -239,6 +226,22 @@
             notes: notes.trim() || null
         };
     }
+    
+    let breakdown = $derived(cardBreakdown(currentValues()));
+
+    // Savings left after goals — the general/rainy-day portion. Null until the
+    // savings and goal amounts are all valid numbers.
+    let generalSavingsCents = $derived.by(() => {
+        const allocations = goalAllocationValues();
+        if (
+            !breakdown ||
+            allocations.some((allocation) => !Number.isInteger(allocation.amountCents))
+        ) {
+            return null;
+        }
+        const allocated = allocations.reduce((sum, allocation) => sum + allocation.amountCents, 0);
+        return breakdown.savingsCents - allocated;
+    });
 
     let reoccurBillsJson = $derived(
         JSON.stringify(
@@ -380,9 +383,18 @@
                 <h2 class="font-bold">Other Bills</h2>
                 <BillListEditor bind:bills={otherBills} bind:editing={otherBillsEditing} />
                 {@render fieldError(fieldErrors.otherBills)}
-                <h2 class="font-bold">Savings?</h2>
+                <div class="flex items-center justify-between gap-4">
+                    <h2 class="font-bold">{saving ? "Allowance" : "Savings?"}</h2>
+                    <SegmentedToggle
+                        bind:value={budgetMode}
+                        options={[
+                            { value: "splurge", label: "Splurge" },
+                            { value: "save", label: "Save" }
+                        ]}
+                    />
+                </div>
                 <div class="flex space-x-5">
-                    <RadioGroup.Root bind:value={savingsType} name="savingsType">
+                    <RadioGroup.Root bind:value={budgetType} name="budgetType">
                         <div class="flex space-x-4">
                             <div class="flex items-center space-x-2">
                                 <RadioGroup.Item value="%" id="r1" />
@@ -394,10 +406,10 @@
                             </div>
                         </div>
                   </RadioGroup.Root>
-                  <Input placeholder="Enter Amount" bind:value={savingsAmount} class="col-span-3 w-[120px]"/>
+                  <Input placeholder="Enter Amount" bind:value={budgetAmount} class="col-span-3 w-[120px]"/>
                 </div>
-                {@render fieldError(fieldErrors.savingsType)}
-                {@render fieldError(fieldErrors.savingsAmount)}
+                {@render fieldError(fieldErrors.budgetType)}
+                {@render fieldError(fieldErrors.budgetAmount)}
                 {#if goalAmounts.length > 0}
                     <h2 class="font-bold">Put Toward Goals</h2>
                     <div class="grid grid-cols-4 items-center gap-4">
@@ -439,12 +451,20 @@
                 <input type="hidden" name="cardId" value={cardToEdit.id} />
             {/if}
             <input type="hidden" name="payAmount" value={payAmount} />
-            <input type="hidden" name="savingsAmount" value={savingsAmount} />
+            <input type="hidden" name="budgetMode" value={budgetMode} />
+            <input type="hidden" name="budgetAmount" value={budgetAmount} />
             <input type="hidden" name="reoccurBills" value={reoccurBillsJson} />
             <input type="hidden" name="otherBills" value={otherBillsJson} />
             <input type="hidden" name="goalAllocations" value={goalAllocationsJson} />
             <input type="hidden" name="confirmDuplicate" value={confirmDuplicate} />
-            <Dialog.Footer>
+            <Dialog.Footer class="sm:items-center">
+                {#if breakdown}
+                    {@const headline = saving ? breakdown.savingsCents : breakdown.takeHomeCents}
+                    <p class="text-sm font-semibold sm:mr-auto">
+                        {saving ? "Savings" : "Take Home"}:
+                        <span class:text-red-500={headline < 0}>{formatCents(headline)}</span>
+                    </p>
+                {/if}
                 <Button type="submit" disabled={!paydaySettings || otherBillsEditing || !resolvedPaydate}>
                     {cardToEdit ? "Save" : "Submit"}
                 </Button>

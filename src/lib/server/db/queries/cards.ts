@@ -2,11 +2,9 @@ import { desc, eq } from 'drizzle-orm';
 import { db } from '../index';
 import { cards } from '../schema/cards';
 import { cardGoalAllocations } from '../schema/savings-goals';
+import type { CardBudget } from '$lib/money';
 
 export type CardBill = { name: string; amountCents: number };
-export type CardSavings =
-    | { method: 'flat'; flatCents: number }
-    | { method: 'percent'; basisPoints: number };
 export type CardGoalAllocation = { goalId: number; amountCents: number };
 
 export type Card = {
@@ -16,7 +14,7 @@ export type Card = {
     paycheckNumber: number;
     payAmountCents: number;
     payDate: Date;
-    savings: CardSavings;
+    budget: CardBudget;
     reoccurBills: CardBill[];
     otherBills: CardBill[];
     goalAllocations: CardGoalAllocation[];
@@ -54,10 +52,10 @@ export async function getCardsByUser(userId: number): Promise<Card[]> {
         paycheckNumber: row.paycheckNumber,
         payAmountCents: row.payAmountCents,
         payDate: row.payDate,
-        savings:
-            row.savingsMethod === 'percent'
-                ? { method: 'percent', basisPoints: row.savingsBasisPoints ?? 0 }
-                : { method: 'flat', flatCents: row.savingsFlatCents ?? 0 },
+        budget:
+            row.budgetMethod === 'percent'
+                ? { mode: row.budgetMode, method: 'percent', basisPoints: row.budgetBasisPoints ?? 0 }
+                : { mode: row.budgetMode, method: 'flat', flatCents: row.budgetFlatCents ?? 0 },
         reoccurBills: JSON.parse(row.recurringBillsSnapshot) as CardBill[],
         otherBills: JSON.parse(row.otherBills) as CardBill[],
         goalAllocations: allocationsByCard.get(row.id) ?? [],

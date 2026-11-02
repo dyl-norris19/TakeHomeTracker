@@ -6,7 +6,7 @@
     import Pencil from "@lucide/svelte/icons/pencil";
     import { enhance } from "$app/forms";
     import { cn } from "$lib/utils.js";
-    import { formatCents, savingsCents as cardSavingsCents } from "$lib/money";
+    import { budgetBreakdown, formatCents } from "$lib/money";
     import AddCard from "$lib/components/AddCard.svelte";
     import type { Card as CardData } from "$lib/server/db/queries/cards";
     import type { Goal } from "$lib/server/db/queries/savings-goals";
@@ -35,11 +35,7 @@
 
     // All money is integer cents, so these sums and differences are exact — no
     // floating-point drift. The only rounding is inside percentOfCents.
-    function savingsCents(): number {
-        return card.savings.method === "percent"
-            ? cardSavingsCents(card.payAmountCents, "percent", card.savings.basisPoints)
-            : cardSavingsCents(card.payAmountCents, "flat", card.savings.flatCents);
-    }
+    let breakdown = $derived(budgetBreakdown(card));
 
     // Where this card's savings went: each goal, then whatever is left as general.
     let savingsBreakdown = $derived.by(() => {
@@ -51,24 +47,12 @@
             amountCents: allocation.amountCents
         }));
         const allocated = parts.reduce((sum, part) => sum + part.amountCents, 0);
-        const general = savingsCents() - allocated;
+        const general = breakdown.savingsCents - allocated;
         if (general > 0) {
             parts.push({ label: "General", amountCents: general });
         }
         return parts;
     });
-
-    function takeHomeCents(): number {
-        const reoccurTotal: number = card.reoccurBills.reduce(
-            (sum: number, bill: { amountCents: number }) => sum + bill.amountCents,
-            0
-        );
-        const otherTotal: number = card.otherBills.reduce(
-            (sum: number, bill: { amountCents: number }) => sum + bill.amountCents,
-            0
-        );
-        return card.payAmountCents - reoccurTotal - otherTotal - savingsCents();
-    }
 
     function secondsToDate(): string {
         const date = new Date(card.payDate);
@@ -167,7 +151,7 @@
         </Card.Content>
         <Card.Footer class="flex justify-between">
             <div>
-                <p>Savings: {formatCents(savingsCents())}</p>
+                <p>Savings: {formatCents(breakdown.savingsCents)}</p>
                 {#if savingsBreakdown.length > 0}
                     <p class="text-sm text-muted-foreground">
                         {savingsBreakdown
@@ -176,7 +160,11 @@
                     </p>
                 {/if}
             </div>
-            <p>Take Home: {formatCents(takeHomeCents())}</p>
+            <p>
+                {card.budget.mode === "save" ? "Allowance" : "Take Home"}: {formatCents(
+                    breakdown.takeHomeCents
+                )}
+            </p>
         </Card.Footer>
     </Card.Root>
 </div>

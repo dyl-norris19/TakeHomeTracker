@@ -71,6 +71,13 @@
       "when": 1793635197364,
       "tag": "0009_add_card_and_goal_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1793721597364,
+      "tag": "0010_add_card_budget_mode",
+      "breakpoints": true
     }
   ]
 }
