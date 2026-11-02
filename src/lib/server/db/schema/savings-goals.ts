@@ -1,4 +1,4 @@
-import { sqliteTable, integer, text, unique } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, integer, text, index, unique } from 'drizzle-orm/sqlite-core';
 import { users } from './users';
 import { cards } from './cards';
 
@@ -10,7 +10,9 @@ export const savingsGoals = sqliteTable('savings_goals', {
     startingCents: integer('starting_cents').notNull().default(0),
     completedAt: integer('completed_at', { mode: 'timestamp' }),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
-});
+}, (table) => [
+    index('savings_goals_user_id_created_at_idx').on(table.userId, table.createdAt)
+]);
 
 /**
  * Money moved into or out of a goal from something other than a paycheck — a tax
@@ -24,7 +26,9 @@ export const goalAdjustments = sqliteTable('goal_adjustments', {
     amountCents: integer('amount_cents').notNull(),
     note: text('note'),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
-});
+}, (table) => [
+    index('goal_adjustments_goal_id_created_at_idx').on(table.goalId, table.createdAt)
+]);
 
 export const cardGoalAllocations = sqliteTable(
     'card_goal_allocations',
@@ -34,5 +38,8 @@ export const cardGoalAllocations = sqliteTable(
         goalId: integer('goal_id').notNull().references(() => savingsGoals.id),
         amountCents: integer('amount_cents').notNull()
     },
-    (table) => [unique().on(table.cardId, table.goalId)]
+    (table) => [
+        unique().on(table.cardId, table.goalId),
+        index('card_goal_allocations_goal_id_idx').on(table.goalId)
+    ]
 );

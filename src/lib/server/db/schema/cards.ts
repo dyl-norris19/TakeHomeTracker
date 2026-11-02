@@ -1,4 +1,4 @@
-import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, integer, text, index } from 'drizzle-orm/sqlite-core';
 import { users } from './users';
 
 export const cards = sqliteTable('cards', {
@@ -21,4 +21,6 @@ export const cards = sqliteTable('cards', {
     recurringBillsSnapshot: text('recurring_bills_snapshot').notNull(),
     otherBills: text('other_bills').notNull(),
     notes: text('notes')
-});
+}, (table) => [
+    index('cards_user_id_pay_date_idx').on(table.userId, table.payDate)
+]);

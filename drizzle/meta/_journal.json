@@ -64,6 +64,13 @@
       "when": 1792359341335,
       "tag": "0008_create_goal_adjustments",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1793635197364,
+      "tag": "0009_add_card_and_goal_indexes",
+      "breakpoints": true
     }
   ]
 }

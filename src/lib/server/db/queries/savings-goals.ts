@@ -35,7 +35,7 @@ export async function getGoalsByUser(userId: number): Promise<Goal[]> {
         })
         .from(savingsGoals)
         .where(eq(savingsGoals.userId, userId))
-        .orderBy(savingsGoals.createdAt);
+        .orderBy(desc(savingsGoals.createdAt), desc(savingsGoals.id));
 
     // The two child tables are fetched separately and summed in JS, the same way
     // getCardsByUser nests its allocations.
@@ -64,7 +64,7 @@ export async function getGoalsByUser(userId: number): Promise<Goal[]> {
         .from(goalAdjustments)
         .innerJoin(savingsGoals, eq(goalAdjustments.goalId, savingsGoals.id))
         .where(eq(savingsGoals.userId, userId))
-        .orderBy(desc(goalAdjustments.createdAt));
+        .orderBy(desc(goalAdjustments.createdAt), desc(goalAdjustments.id));
 
     const adjustmentsByGoal = new Map<number, GoalAdjustment[]>();
     const adjustedByGoal = new Map<number, number>();

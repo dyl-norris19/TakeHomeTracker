@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { db } from '../index';
 import { cards } from '../schema/cards';
 import { cardGoalAllocations } from '../schema/savings-goals';
@@ -24,7 +24,11 @@ export type Card = {
 };
 
 export async function getCardsByUser(userId: number): Promise<Card[]> {
-    const rows = await db.select().from(cards).where(eq(cards.userId, userId));
+    const rows = await db
+        .select()
+        .from(cards)
+        .where(eq(cards.userId, userId))
+        .orderBy(desc(cards.payDate), desc(cards.id));
 
     const allocationRows = await db
         .select({

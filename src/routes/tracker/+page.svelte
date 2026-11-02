@@ -15,11 +15,9 @@
 
     let showPaycheckNumber = $derived(!!data.paydaySettings && data.paydaySettings.frequency !== 1);
 
-    let userCards = $derived(
-        [...data.cards].sort((a, b) => a.payDate.getTime() - b.payDate.getTime())
-    );
+    let userCards = $derived(data.cards);
 
-    // Open goals first, closed ones after; each group keeps creation order.
+    // Open goals first, closed ones after; each group keeps the query's newest-first order.
     let sortedGoals = $derived(
         [...data.goals].sort((a, b) => Number(a.completedAt !== null) - Number(b.completedAt !== null))
     );
