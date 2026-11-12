@@ -1,7 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getPaydaySettings } from '$lib/server/db/queries/payday-settings';
-import { upsertPaydaySettings } from '$lib/server/db/commands/payday-settings';
 import { getRecurringBills } from '$lib/server/db/queries/recurring-bills';
 import { replaceRecurringBills } from '$lib/server/db/commands/recurring-bills';
 import { getCardsByUser } from '$lib/server/db/queries/cards';
@@ -194,27 +193,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-    updatePaydate: async ({ request, locals }) => {
-        if (!locals.user) {
-            return fail(401);
-        }
-
-        const formData = await request.formData();
-        const paydateSeconds = Number(formData.get('paydate'));
-        const frequency = Number(formData.get('frequency'));
-
-        if (!paydateSeconds || Number.isNaN(paydateSeconds)) {
-            return fail(400, { paydateError: 'Pick your paydate.' });
-        }
-        if (![1, 2, 4].includes(frequency)) {
-            return fail(400, { paydateError: 'Choose how often you get paid.' });
-        }
-
-        await upsertPaydaySettings(locals.user.id, new Date(paydateSeconds * 1000), frequency);
-
-        return { paydateSuccess: true };
-    },
-
     updateRecurringBills: async ({ request, locals }) => {
         if (!locals.user) {
             return fail(401);
@@ -241,7 +219,7 @@ export const actions: Actions = {
         const paydaySettings = await getPaydaySettings(locals.user.id);
         if (!paydaySettings) {
             return fail(400, {
-                cardError: 'Set your paydate first.'
+                cardError: 'Set your pay schedule in Settings first.'
             });
         }
 
@@ -298,7 +276,7 @@ export const actions: Actions = {
         const paydaySettings = await getPaydaySettings(locals.user.id);
         if (!paydaySettings) {
             return fail(400, {
-                cardError: 'Set your paydate first.'
+                cardError: 'Set your pay schedule in Settings first.'
             });
         }
 

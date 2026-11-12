@@ -1,4 +1,6 @@
 import { budgetBreakdown, type BudgetMethod, type BudgetMode, type CardBudget } from './money';
+// Type-only: paydates.ts imports MONTHS from here, so a value import would be circular.
+import type { Frequency, WeekendRule } from './paydates';
 
 // Basic shape check: something, an @, dot-separated labels, at least one dot.
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
@@ -301,4 +303,62 @@ export function validateAdjustmentForm(values: AdjustmentFormValues): Adjustment
 	}
 
 	return errors;
+}
+
+export type PayScheduleValues = {
+	// Null when the submitted value isn't one of the known options.
+	frequency: Frequency | null;
+	anchorDate: string | null;
+	payDay1: number | null;
+	payDay2: number | null;
+	weekendRule: WeekendRule | null;
+	// Null when left blank (it's optional); NaN when it isn't a number.
+	takeHomeCents: number | null;
+};
+
+function isDayOfMonth(day: number | null): boolean {
+	return day !== null && Number.isInteger(day) && day >= 1 && day <= 31;
+}
+
+/**
+ * Validates a pay schedule. Returns the first problem found, or null when it's
+ * good to save. Only the fields the chosen frequency uses are checked.
+ */
+export function validatePaySchedule(values: PayScheduleValues): string | null {
+	const { frequency } = values;
+
+	if (frequency === null) {
+		return 'Choose how often you get paid.';
+	}
+	if (frequency === 'weekly' || frequency === 'biweekly') {
+		if (!values.anchorDate || !/^\d{4}-\d{2}-\d{2}$/.test(values.anchorDate)) {
+			return 'Pick a recent payday.';
+		}
+	} else {
+		if (frequency === 'monthly' && !isDayOfMonth(values.payDay1)) {
+			return 'Pick the day you get paid.';
+		}
+		if (frequency === 'semimonthly') {
+			if (!isDayOfMonth(values.payDay1) || !isDayOfMonth(values.payDay2)) {
+				return 'Pick both days you get paid.';
+			}
+			if (values.payDay1 === values.payDay2) {
+				return 'Pick two different days.';
+			}
+		}
+		if (values.weekendRule === null) {
+			return 'Choose what happens when payday lands on a weekend.';
+		}
+	}
+
+	if (values.takeHomeCents !== null) {
+		if (!Number.isInteger(values.takeHomeCents)) {
+			return 'Salary must be a number.';
+		}
+		if (values.takeHomeCents <= 0) {
+			return 'Salary must be greater than 0.';
+		}
+	}
+
+	return null;
 }

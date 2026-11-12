@@ -10,6 +10,7 @@
     import AddCard from "$lib/components/AddCard.svelte";
     import type { Card as CardData } from "$lib/server/db/queries/cards";
     import type { Goal } from "$lib/server/db/queries/savings-goals";
+    import type { PaydaySettings } from "$lib/paydates";
 
     let {
         card,
@@ -19,7 +20,7 @@
     }: {
         card: CardData;
         showPaycheckNumber?: boolean;
-        paydaySettings?: { paydate: Date; frequency: number };
+        paydaySettings?: PaydaySettings;
         goals?: Goal[];
     } = $props();
 

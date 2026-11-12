@@ -1,10 +1,51 @@
 import { MONTHS } from './validation';
 
-export type PaydaySettings = { paydate: Date; frequency: number };
+export const FREQUENCIES = ['weekly', 'biweekly', 'semimonthly', 'monthly'] as const;
+export type Frequency = (typeof FREQUENCIES)[number];
 
-/** `true` when the user is paid on a fixed day each month (frequency 1). */
+export const WEEKEND_RULES = ['before', 'after', 'none'] as const;
+export type WeekendRule = (typeof WEEKEND_RULES)[number];
+
+/**
+ * When a user gets paid. Which fields matter depends on `frequency`:
+ * weekly / biweekly step from `anchorDate`; monthly uses `payDay1`;
+ * semimonthly uses `payDay1` and `payDay2`. `weekendRule` only applies to the
+ * day-of-month schedules.
+ */
+export type PaydaySettings = {
+	frequency: Frequency;
+	anchorDate: string | null;
+	payDay1: number | null;
+	payDay2: number | null;
+	weekendRule: WeekendRule;
+};
+
+/** `true` when the user is paid on a single fixed day each month. */
 export function isMonthly(settings: PaydaySettings): boolean {
-	return settings.frequency === 1;
+	return settings.frequency === 'monthly';
+}
+
+/** A local Date -> its `YYYY-MM-DD` calendar date. */
+export function toIsoDate(date: Date): string {
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * A `YYYY-MM-DD` string -> local midnight on that calendar date, or null when
+ * malformed or not a real date (e.g. `2026-02-30`). Parsed by hand because
+ * `new Date('2026-05-01')` means UTC midnight, which is the day before in the US.
+ */
+export function parseIsoDate(value: string): Date | null {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+	if (!match) {
+		return null;
+	}
+	const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+	const date = new Date(year, month - 1, day);
+	if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+		return null;
+	}
+	return date;
 }
 
 function lastDayOfMonth(year: number, monthIndex: number): number {
@@ -20,10 +61,26 @@ function addDays(date: Date, days: number): Date {
 }
 
 /**
- * Every payday that falls within the given month, ascending.
+ * Moves a Saturday / Sunday payday to the Friday before or the Monday after.
+ * Weekdays, and the `none` rule, come back unchanged.
+ */
+export function shiftForWeekend(date: Date, rule: WeekendRule): Date {
+	const day = date.getDay();
+	if (rule === 'none' || (day !== 0 && day !== 6)) {
+		return date;
+	}
+	// Saturday -> Fri (-1) / Mon (+2); Sunday -> Fri (-2) / Mon (+1).
+	const shift = rule === 'before' ? (day === 6 ? -1 : -2) : day === 6 ? 2 : 1;
+	return addDays(date, shift);
+}
+
+/**
+ * Every payday belonging to the given month, ascending.
  *
- * Monthly: the anchor's day-of-month, clamped to the month's last day (so an
- * anchor on the 31st still lands in February).
+ * Monthly / semimonthly: each pay day clamped to the month's last day (so the
+ * 31st still lands in February), then moved off a weekend per `weekendRule`.
+ * That move can push a date into the neighbouring month (the 1st on a Saturday
+ * paid Friday the 31st), but it still counts as this month's paycheck.
  * Weekly / biweekly: the anchor stepped by its interval in both directions,
  * keeping the dates whose calendar month matches.
  */
@@ -32,22 +89,34 @@ export function paydatesInMonth(
 	year: number,
 	monthIndex: number
 ): Date[] {
-	const { paydate, frequency } = settings;
-
-	if (frequency === 1) {
-		const day = Math.min(paydate.getDate(), lastDayOfMonth(year, monthIndex));
-		return [new Date(year, monthIndex, day)];
+	if (settings.frequency === 'monthly' || settings.frequency === 'semimonthly') {
+		const days = (
+			settings.frequency === 'monthly'
+				? [settings.payDay1]
+				: [settings.payDay1, settings.payDay2]
+		).filter((day): day is number => day !== null);
+		const last = lastDayOfMonth(year, monthIndex);
+		return days
+			.sort((a, b) => a - b)
+			.map((day) =>
+				shiftForWeekend(new Date(year, monthIndex, Math.min(day, last)), settings.weekendRule)
+			);
 	}
 
-	const intervalDays = frequency === 2 ? 14 : 7;
+	const anchor = settings.anchorDate ? parseIsoDate(settings.anchorDate) : null;
+	if (!anchor) {
+		return [];
+	}
+
+	const intervalDays = settings.frequency === 'biweekly' ? 14 : 7;
 	const monthStart = new Date(year, monthIndex, 1);
 	const monthEnd = new Date(year, monthIndex + 1, 1); // exclusive
 
 	// Step by whole days (not milliseconds) so a DST change can't nudge a
-	// payday onto the wrong calendar date. Anchor at local midnight, walk back
-	// to before the month starts (works whether the anchor is before or after
-	// the target month), then step forward to the first payday inside it.
-	let cursor = new Date(paydate.getFullYear(), paydate.getMonth(), paydate.getDate());
+	// payday onto the wrong calendar date. Walk back to before the month starts
+	// (works whether the anchor is before or after the target month), then step
+	// forward to the first payday inside it.
+	let cursor = anchor;
 	while (cursor >= monthStart) {
 		cursor = addDays(cursor, -intervalDays);
 	}
@@ -60,6 +129,26 @@ export function paydatesInMonth(
 		dates.push(cursor);
 	}
 	return dates;
+}
+
+/** The next `count` paydays on or after `from` (by calendar day), ascending. */
+export function upcomingPaydates(
+	settings: PaydaySettings,
+	from: Date = new Date(),
+	count = 4
+): Date[] {
+	const today = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+	const dates: Date[] = [];
+	// Start a month back to catch a payday shifted forward out of it; the most
+	// sparse schedule (monthly) needs `count` months ahead.
+	for (let offset = -1; offset <= count; offset++) {
+		const base = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+		dates.push(...paydatesInMonth(settings, base.getFullYear(), base.getMonth()));
+	}
+	return dates
+		.filter((date) => date >= today)
+		.sort((a, b) => a.getTime() - b.getTime())
+		.slice(0, count);
 }
 
 /** How many paychecks land in the given month for this schedule. */

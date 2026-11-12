@@ -28,8 +28,10 @@
         parseMonthValue,
         paycheckCountInMonth,
         resolvePaydate,
-        toMonthValue
+        toMonthValue,
+        type PaydaySettings
     } from "$lib/paydates";
+    import { resolve } from "$app/paths";
     import { monthNameToIndex } from "$lib/validation";
     import type { Card } from "$lib/server/db/queries/cards";
     import type { Goal } from "$lib/server/db/queries/savings-goals";
@@ -44,7 +46,7 @@
         open = $bindable(false)
     }: {
         recurringBills?: { name: string; amountCents: number }[];
-        paydaySettings?: { paydate: Date; frequency: number };
+        paydaySettings?: PaydaySettings & { takeHomeCents?: number | null };
         cardToEdit?: Card;
         goals?: Goal[];
         open?: boolean;
@@ -155,7 +157,9 @@
                 const nearest = paydaySettings ? nearestPaycheck(paydaySettings) : null;
                 selectedMonth = nearest?.value ?? "";
                 paycheckNumber = nearest ? String(nearest.paycheckNumber) : "1";
-                payAmount = "";
+                // Prefill the usual take-home from settings; still editable per card.
+                payAmount =
+                    paydaySettings?.takeHomeCents != null ? centsToInput(paydaySettings.takeHomeCents) : "";
                 budgetMode = "splurge";
                 budgetType = "";
                 budgetAmount = "";
@@ -312,7 +316,7 @@
             </Dialog.Header>
             {#if !paydaySettings}
                 <p class="text-sm text-red-500">
-                    Set your paydate first (the “Paydate” button) — new cards are dated from it.
+                    Set your pay schedule in <a href={resolve("/settings")} class="underline">Settings</a> first — new cards are dated from it.
                 </p>
             {/if}
             {#if submitError}

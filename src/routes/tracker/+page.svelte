@@ -2,10 +2,10 @@
     import Occurrance from '$lib/components/Occurrance.svelte'
     import AddCard from '$lib/components/AddCard.svelte'
     import NewRecBill from '$lib/components/NewRecBill.svelte';
-    import Paydate from '$lib/components/Paydate.svelte';
     import NewGoal from '$lib/components/NewGoal.svelte';
     import SavingFor from '$lib/components/SavingFor.svelte';
     import 'normalize.css';
+    import { isMonthly } from '$lib/paydates';
     import { tick } from 'svelte';
     import type { PageData } from './$types';
 
@@ -13,7 +13,7 @@
 
     let email = $derived(data.email);
 
-    let showPaycheckNumber = $derived(!!data.paydaySettings && data.paydaySettings.frequency !== 1);
+    let showPaycheckNumber = $derived(!!data.paydaySettings && !isMonthly(data.paydaySettings));
 
     let userCards = $derived(data.cards);
 
@@ -85,7 +85,6 @@
                             goals={data.goals}
                         />
                         <NewRecBill recurringBills={data.recurringBills} />
-                        <Paydate paydaySettings={data.paydaySettings} />
                         <NewGoal />
                     </div>
                     {#if sortedGoals.length > 0}
