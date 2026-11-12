@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getPaydaySettings } from '$lib/server/db/queries/payday-settings';
+import { getRecurringBills } from '$lib/server/db/queries/recurring-bills';
 import { upsertPaydaySettings, type PayScheduleRow } from '$lib/server/db/commands/payday-settings';
 import { getFormString } from '$lib/server/form-data';
 import { validatePaySchedule, type PayScheduleValues } from '$lib/validation';
@@ -56,7 +57,9 @@ export const load: PageServerLoad = async ({ locals }) => {
     }
 
     return {
-        paydaySettings: await getPaydaySettings(locals.user.id)
+        paydaySettings: await getPaydaySettings(locals.user.id),
+        // Bills only load here for now; saving them from this page is still simulated.
+        recurringBills: await getRecurringBills(locals.user.id)
     };
 };
 
