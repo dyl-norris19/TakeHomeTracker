@@ -6,6 +6,7 @@
     import { resolve } from '$app/paths';
     import { page } from '$app/state';
     import SettingsIcon from '@lucide/svelte/icons/settings';
+    import { Toaster } from '$lib/components/ui/sonner/index';
     import type { LayoutData } from './$types';
 
     let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
@@ -35,6 +36,8 @@
 {/snippet}
 
 <svelte:head><link rel="icon" href={yahoo} /></svelte:head>
+
+<Toaster richColors position="bottom-right" />
 
 <!-- Navbar keeps its natural height; the content slot below gets exactly
      "one screen minus the navbar" via flex-1 -->
