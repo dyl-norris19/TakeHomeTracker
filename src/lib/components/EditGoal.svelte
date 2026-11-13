@@ -97,25 +97,25 @@
                 <p class="text-sm text-red-500">{errorMsg}</p>
             {/if}
             <div class="grid gap-4 py-4">
-                <div class="grid grid-cols-4 items-center gap-4">
-                    <Label for="goal-{goal.id}-name" class="text-right">Name</Label>
+                <div class="grid grid-cols-1 items-center gap-2 sm:grid-cols-4 sm:gap-4">
+                    <Label for="goal-{goal.id}-name" class="sm:text-right">Name</Label>
                     <Input
                         id="goal-{goal.id}-name"
                         name="name"
                         placeholder="e.g. Car"
                         bind:value={name}
-                        class="col-span-3 w-[180px]"
+                        class="w-full sm:col-span-3 sm:w-[180px]"
                     />
                     {@render fieldError(fieldErrors.name)}
                 </div>
-                <div class="grid grid-cols-4 items-center gap-4">
-                    <Label for="goal-{goal.id}-target" class="text-right">Target ($)</Label>
+                <div class="grid grid-cols-1 items-center gap-2 sm:grid-cols-4 sm:gap-4">
+                    <Label for="goal-{goal.id}-target" class="sm:text-right">Target ($)</Label>
                     <Input
                         id="goal-{goal.id}-target"
                         name="targetAmount"
                         placeholder="Enter Amount"
                         bind:value={targetAmount}
-                        class="col-span-3 w-[180px]"
+                        class="w-full sm:col-span-3 sm:w-[180px]"
                     />
                     {@render fieldError(fieldErrors.target)}
                 </div>

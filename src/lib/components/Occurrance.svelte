@@ -84,10 +84,13 @@
 <div data-tour="card">
     <Card.Root class="max-w-[960px] w-full mx-auto">
         <Card.Header>
-            <Card.Title class="flex justify-between items-center">
-                <p>{title}</p>
-                <div class="flex items-center gap-3">
-                    <p>Pay: {formatCents(card.payAmountCents)}</p>
+            <!-- Phones: title on the left with the edit/delete buttons on the right, then
+                 the pay on its own line underneath, left aligned (order-3 + w-full).
+                 sm and up: title on the left, pay and buttons together on the right. -->
+            <Card.Title class="flex flex-wrap items-center gap-x-3 gap-y-2 text-lg sm:text-2xl">
+                <p class="min-w-0 flex-1">{title}</p>
+                <p class="order-3 w-full sm:order-none sm:w-auto">Pay: {formatCents(card.payAmountCents)}</p>
+                <div class="flex shrink-0 items-center gap-1 sm:gap-3">
                     <Button
                         type="button"
                         variant="ghost"
@@ -163,7 +166,8 @@
                 <p class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{card.notes}</p>
             {/if}
         </Card.Content>
-        <Card.Footer class="flex justify-between">
+        <!-- Phones: savings then take home stacked, both left aligned. sm and up: side by side. -->
+        <Card.Footer class="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <p>Savings: {formatCents(breakdown.savingsCents)}</p>
                 {#if savingsBreakdown.length > 0}

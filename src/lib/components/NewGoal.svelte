@@ -99,36 +99,36 @@
                 <p class="text-sm text-red-500">{errorMsg}</p>
             {/if}
             <div class="grid gap-4 py-4">
-                <div class="grid grid-cols-4 items-center gap-4">
-                    <Label for="goalName" class="text-right">Name</Label>
+                <div class="grid grid-cols-1 items-center gap-2 sm:grid-cols-4 sm:gap-4">
+                    <Label for="goalName" class="sm:text-right">Name</Label>
                     <Input
                         id="goalName"
                         name="name"
                         placeholder="e.g. Car"
                         bind:value={name}
-                        class="col-span-3 w-[180px]"
+                        class="w-full sm:col-span-3 sm:w-[180px]"
                     />
                     {@render fieldError(fieldErrors.name)}
                 </div>
-                <div class="grid grid-cols-4 items-center gap-4">
-                    <Label for="goalTarget" class="text-right">Target ($)</Label>
+                <div class="grid grid-cols-1 items-center gap-2 sm:grid-cols-4 sm:gap-4">
+                    <Label for="goalTarget" class="sm:text-right">Target ($)</Label>
                     <Input
                         id="goalTarget"
                         name="targetAmount"
                         placeholder="Enter Amount"
                         bind:value={targetAmount}
-                        class="col-span-3 w-[180px]"
+                        class="w-full sm:col-span-3 sm:w-[180px]"
                     />
                     {@render fieldError(fieldErrors.target)}
                 </div>
-                <div class="grid grid-cols-4 items-center gap-4">
-                    <Label for="goalStarting" class="text-right">Already saved ($)</Label>
+                <div class="grid grid-cols-1 items-center gap-2 sm:grid-cols-4 sm:gap-4">
+                    <Label for="goalStarting" class="sm:text-right">Already saved ($)</Label>
                     <Input
                         id="goalStarting"
                         name="startingAmount"
                         placeholder="(Optional)"
                         bind:value={startingAmount}
-                        class="col-span-3 w-[180px]"
+                        class="w-full sm:col-span-3 sm:w-[180px]"
                     />
                     {@render fieldError(fieldErrors.starting)}
                 </div>

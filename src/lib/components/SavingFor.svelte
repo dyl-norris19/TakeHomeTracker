@@ -31,7 +31,8 @@
 </script>
 
 <!-- data-tour attributes are what the intro tour highlights (see $lib/tour/steps.ts). -->
-<Card.Root class="w-full" data-closed={closed} data-tour="goal">
+<!-- Phones show goals in a sideways strip, so each one is a fixed-width snap stop there. -->
+<Card.Root class="w-64 shrink-0 snap-start md:w-full" data-closed={closed} data-tour="goal">
     <Card.Header class="pb-2">
         <div class="flex items-start justify-between gap-2">
             <Card.Title class="min-w-0 text-base">{goal.name}</Card.Title>

@@ -10,8 +10,9 @@
 	}: AlertDialogPrimitive.CancelProps = $props();
 </script>
 
+<!-- changed: removed "mt-2 sm:mt-0"; alert-dialog-footer now supplies the phone gap with gap-2, so this would double it -->
 <AlertDialogPrimitive.Cancel
 	bind:ref
-	class={cn(buttonVariants({ variant: "outline" }), "mt-2 sm:mt-0", className)}
+	class={cn(buttonVariants({ variant: "outline" }), className)}
 	{...restProps}
 />

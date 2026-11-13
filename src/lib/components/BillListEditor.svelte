@@ -53,9 +53,10 @@
                         bind:checked={selectedForDelete[index]}
                     />
                 {/if}
-                <div class="grid flex-1 grid-cols-4 items-center gap-4">
+                <!-- Phones: name and amount share the row evenly; sm and up keeps the label-column layout. -->
+                <div class="grid flex-1 grid-cols-2 items-center gap-2 sm:grid-cols-4 sm:gap-4">
                     <Input placeholder="Name" bind:value={bill.name} class="col-span-1" />
-                    <Input placeholder="Amount" bind:value={bill.amount} class="col-span-3 w-[180px]" />
+                    <Input placeholder="Amount" bind:value={bill.amount} class="w-full sm:col-span-3 sm:w-[180px]" />
                 </div>
             </div>
         {/each}

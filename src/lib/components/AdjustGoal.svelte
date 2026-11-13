@@ -123,9 +123,9 @@
             <input type="hidden" name="goalId" value={goal.id} />
             <input type="hidden" name="direction" value={direction} />
             <div class="grid gap-4 py-4">
-                <div class="grid grid-cols-4 items-center gap-4">
-                    <Label for="adjust-{goal.id}-amount" class="text-right">Amount ($)</Label>
-                    <div class="col-span-3 flex items-center gap-2">
+                <div class="grid grid-cols-1 items-center gap-2 sm:grid-cols-4 sm:gap-4">
+                    <Label for="adjust-{goal.id}-amount" class="sm:text-right">Amount ($)</Label>
+                    <div class="flex items-center gap-2 sm:col-span-3">
                         <!-- The toggle owns the sign so the amount box never needs a minus. -->
                         <SegmentedToggle
                             bind:value={direction}
@@ -139,19 +139,19 @@
                             name="amount"
                             placeholder="Enter Amount"
                             bind:value={amount}
-                            class="w-[120px]"
+                            class="min-w-0 flex-1 sm:w-[120px] sm:flex-none"
                         />
                     </div>
                     {@render fieldError(fieldErrors.amount)}
                 </div>
-                <div class="grid grid-cols-4 items-center gap-4">
-                    <Label for="adjust-{goal.id}-note" class="text-right">Note</Label>
+                <div class="grid grid-cols-1 items-center gap-2 sm:grid-cols-4 sm:gap-4">
+                    <Label for="adjust-{goal.id}-note" class="sm:text-right">Note</Label>
                     <Input
                         id="adjust-{goal.id}-note"
                         name="note"
                         placeholder="(Optional) e.g. tax refund"
                         bind:value={note}
-                        class="col-span-3"
+                        class="sm:col-span-3"
                     />
                     {@render fieldError(fieldErrors.note)}
                 </div>

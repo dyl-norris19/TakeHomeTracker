@@ -20,10 +20,11 @@
 <Dialog.Portal {...portalProps}>
 	<Dialog.Overlay />
 	<!-- added: flex-col + max-h/overflow-y-auto so tall content scrolls instead of overflowing the viewport; p-6 -> px-6 so dialog-header/dialog-footer can own vertical padding as sticky elements -->
+	<!-- changed: w-full -> w-[calc(100%-2rem)] so a phone keeps a 1rem gap between the dialog and each screen edge, and sm:rounded-lg -> rounded-lg since the dialog no longer runs edge to edge there -->
 	<DialogPrimitive.Content
 		bind:ref
 		class={cn(
-			"data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] bg-background fixed left-[50%] top-[50%] z-50 flex max-h-[85vh] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col overflow-y-auto gap-4 border px-6 shadow-lg duration-200 sm:rounded-lg",
+			"data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] bg-background fixed left-[50%] top-[50%] z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col overflow-y-auto gap-4 border px-6 shadow-lg duration-200 rounded-lg",
 			className
 		)}
 		interactOutsideBehavior="ignore"

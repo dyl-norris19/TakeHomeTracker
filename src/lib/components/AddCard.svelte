@@ -339,6 +339,17 @@
     {/if}
 {/snippet}
 
+<!-- A recurring bill's "% of pay" and due date. Rendered in two places (under the
+     name on phones, beside the amount from sm up), only one of which is visible. -->
+{#snippet billHints(bill: CardRecurringBill)}
+    {#if bill.basisPoints !== null}
+        <span class="text-muted-foreground text-xs">{basisPointsToInput(bill.basisPoints)}% of pay</span>
+    {/if}
+    {#if bill.dueDate}
+        <span class="text-muted-foreground text-xs">Due {formatDueDate(bill.dueDate)}</span>
+    {/if}
+{/snippet}
+
 <Dialog.Root bind:open>
     {#if !cardToEdit}
         <Dialog.Trigger type="button" class={buttonVariants()}>New Card +</Dialog.Trigger>
@@ -403,10 +414,10 @@
             <div class="grid gap-4 py-4">
                 <div class="grid gap-4" data-tour="card-basics">
                     <h2 class="font-bold">Basics</h2>
-                    <div class="grid grid-cols-4 items-center gap-4">
-                        <Label for="month" class="text-right">Month</Label>
+                    <div class="grid grid-cols-1 items-center gap-2 sm:grid-cols-4 sm:gap-4">
+                        <Label for="month" class="sm:text-right">Month</Label>
                         <Select.Root type="single" bind:value={selectedMonth} name="month">
-                            <Select.Trigger class="w-[180px]">
+                            <Select.Trigger class="w-full sm:w-[180px]">
                                 {months.find((m) => m.value === selectedMonth)?.label ?? "Select a month"}
                             </Select.Trigger>
                             <Select.Content portalProps={{ disabled: true }}>
@@ -422,10 +433,10 @@
                         {@render fieldError(fieldErrors.month)}
                     </div>
                     {#if !monthly}
-                        <div class="grid grid-cols-4 items-center gap-4">
-                            <Label for="paycheckNumber" class="text-right">Paycheck #</Label>
+                        <div class="grid grid-cols-1 items-center gap-2 sm:grid-cols-4 sm:gap-4">
+                            <Label for="paycheckNumber" class="sm:text-right">Paycheck #</Label>
                             <Select.Root type="single" bind:value={paycheckNumber} name="paycheckNumber">
-                                <Select.Trigger class="w-[180px]">
+                                <Select.Trigger class="w-full sm:w-[180px]">
                                     {paycheckNumber ? `Paycheck ${paycheckNumber}` : "Select"}
                                 </Select.Trigger>
                                 <Select.Content portalProps={{ disabled: true }}>
@@ -450,23 +461,28 @@
                             That month doesn’t have a paycheck {paycheckNumber}.
                         </p>
                     {/if}
-                    <div class="grid grid-cols-4 items-center gap-4">
-                        <Label for="payAmt" class="text-right">Pay Amount ($)</Label>
-                        <Input id="payAmt" placeholder="Enter Amount" bind:value={payAmount} class="col-span-3 w-[180px]"/>
+                    <div class="grid grid-cols-1 items-center gap-2 sm:grid-cols-4 sm:gap-4">
+                        <Label for="payAmt" class="sm:text-right">Pay Amount ($)</Label>
+                        <Input id="payAmt" placeholder="Enter Amount" bind:value={payAmount} class="w-full sm:col-span-3 sm:w-[180px]"/>
                         {@render fieldError(fieldErrors.payAmount)}
                     </div>
                 </div>
                 <div class="grid gap-4" data-tour="card-recurring-bills">
                     <h2 class="font-bold">Reoccuring Bills</h2>
-                    <div class="grid grid-cols-4 items-center gap-4">
+                    <!-- Phones: name (with its hints) on the left, amount on the right. -->
+                    <div class="grid grid-cols-2 items-center gap-x-4 gap-y-3 sm:grid-cols-4 sm:gap-4">
                         {#each reoccurBills as bill (bill)}
                             {@const cents = recurringBillCents(bill)}
-                            <Label class="text-right">{bill.name}</Label>
-                            <div class="col-span-3 flex items-center gap-2">
+                            <div class="min-w-0 sm:text-right">
+                                <Label>{bill.name}</Label>
+                                <!-- Phones: the % and due date sit under the bill's name. -->
+                                <p class="flex flex-col sm:hidden">{@render billHints(bill)}</p>
+                            </div>
+                            <div class="flex items-center gap-2 sm:col-span-3">
                                 <!-- A percent bill shows its amount from the pay amount and follows it
                                      until typed over; typing turns it into a plain amount for this card. -->
                                 <Input
-                                    class="w-[180px]"
+                                    class="w-full sm:w-[180px]"
                                     bind:value={
                                         () => (bill.basisPoints === null ? bill.amount : Number.isInteger(cents) ? centsToInput(cents) : ""),
                                         (v) => {
@@ -475,12 +491,8 @@
                                         }
                                     }
                                 />
-                                {#if bill.basisPoints !== null}
-                                    <span class="text-muted-foreground text-xs">{basisPointsToInput(bill.basisPoints)}% of pay</span>
-                                {/if}
-                                {#if bill.dueDate}
-                                    <span class="text-muted-foreground text-xs">Due {formatDueDate(bill.dueDate)}</span>
-                                {/if}
+                                <!-- sm and up: the % and due date sit beside the amount. -->
+                                <div class="hidden items-center gap-2 sm:flex">{@render billHints(bill)}</div>
                             </div>
                         {:else}
                             <p class="text-muted-foreground col-span-full text-sm">(None for this paycheck)</p>
@@ -525,16 +537,16 @@
                 {#if goalAmounts.length > 0}
                     <div class="grid gap-4" data-tour="card-goals">
                         <h2 class="font-bold">Put Toward Goals</h2>
-                        <div class="grid grid-cols-4 items-center gap-4">
+                        <div class="grid grid-cols-2 items-center gap-x-4 gap-y-3 sm:grid-cols-4 sm:gap-4">
                             {#each goalAmounts as row (row.goalId)}
-                                <Label for="goal-{row.goalId}" class="text-right">
+                                <Label for="goal-{row.goalId}" class="sm:text-right">
                                     {row.name}{row.closed ? " (closed)" : ""}
                                 </Label>
                                 <Input
                                     id="goal-{row.goalId}"
                                     placeholder="$0"
                                     bind:value={row.amount}
-                                    class="col-span-3 w-[180px]"
+                                    class="w-full sm:col-span-3 sm:w-[180px]"
                                 />
                             {/each}
                             {@render fieldError(fieldErrors.goalAllocations)}
