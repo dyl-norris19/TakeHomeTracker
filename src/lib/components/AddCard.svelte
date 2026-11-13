@@ -40,18 +40,23 @@
     import type { Goal } from "$lib/server/db/queries/savings-goals";
     import BillListEditor from "$lib/components/BillListEditor.svelte";
     import SegmentedToggle from "$lib/components/SegmentedToggle.svelte";
+    import type { SampleCardForm } from "$lib/tour/sample-data";
 
     let {
         recurringBills = [],
         paydaySettings,
         cardToEdit,
         goals = [],
+        sample,
         open = $bindable(false)
     }: {
         recurringBills?: RecurringBill[];
         paydaySettings?: PaydaySettings & { takeHomeCents?: number | null };
         cardToEdit?: Card;
         goals?: Goal[];
+        // Set while the intro tour is showing this form: it opens filled with these
+        // example values, can't be typed in, and can't be submitted.
+        sample?: SampleCardForm;
         open?: boolean;
     } = $props();
 
@@ -181,6 +186,8 @@
     // right starting point.
     $effect(() => {
         if (!open) {
+            // Example values from the intro tour, for the New Card form only.
+            const example = cardToEdit ? undefined : sample;
             if (cardToEdit) {
                 selectedMonth = toMonthValue(cardToEdit.year, monthNameToIndex(cardToEdit.month));
                 paycheckNumber = String(cardToEdit.paycheckNumber);
@@ -217,8 +224,16 @@
                 untrack(fillRecurringBills);
                 otherBills = [];
                 notes = "";
+                if (example) {
+                    if (paydaySettings?.takeHomeCents == null) {
+                        payAmount = example.payAmount;
+                    }
+                    budgetType = example.budgetType;
+                    budgetAmount = example.budgetAmount;
+                    otherBills = example.otherBills.map((bill) => ({ ...bill }));
+                }
             }
-            goalAmounts = goals.flatMap((goal) => {
+            const goalRows = goals.flatMap((goal) => {
                 const existing = cardToEdit?.goalAllocations.find(
                     (allocation) => allocation.goalId === goal.id
                 );
@@ -235,6 +250,10 @@
                     }
                 ];
             });
+            if (example && goalRows.length > 0) {
+                goalRows[0].amount = example.goalAmount;
+            }
+            goalAmounts = goalRows;
             confirmDuplicate = false;
             fieldErrors = {};
             submitError = "";
@@ -328,7 +347,13 @@
         <form
             method="POST"
             action={cardToEdit ? "?/updateCard" : "?/createCard"}
+            inert={!!sample}
             use:enhance={({ cancel }) => {
+                // The tour's example form is only there to look at.
+                if (sample) {
+                    cancel();
+                    return;
+                }
                 const errors = validateCardForm(currentValues());
                 if (Object.keys(errors).length > 0) {
                     fieldErrors = errors;
@@ -376,154 +401,166 @@
                 <p class="text-sm text-red-500">{submitError}</p>
             {/if}
             <div class="grid gap-4 py-4">
-                <h2 class="font-bold">Basics</h2>
-                <div class="grid grid-cols-4 items-center gap-4">
-                    <Label for="month" class="text-right">Month</Label>
-                    <Select.Root type="single" bind:value={selectedMonth} name="month">
-                        <Select.Trigger class="w-[180px]">
-                            {months.find((m) => m.value === selectedMonth)?.label ?? "Select a month"}
-                        </Select.Trigger>
-                        <Select.Content portalProps={{ disabled: true }}>
-                            <Select.Group>
-                                {#each months as month (month.value)}
-                                    <Select.Item value={month.value} label={month.label}>
-                                        {month.label}
-                                    </Select.Item>
-                                {/each}
-                            </Select.Group>
-                        </Select.Content>
-                    </Select.Root>
-                    {@render fieldError(fieldErrors.month)}
-                </div>
-                {#if !monthly}
+                <div class="grid gap-4" data-tour="card-basics">
+                    <h2 class="font-bold">Basics</h2>
                     <div class="grid grid-cols-4 items-center gap-4">
-                        <Label for="paycheckNumber" class="text-right">Paycheck #</Label>
-                        <Select.Root type="single" bind:value={paycheckNumber} name="paycheckNumber">
+                        <Label for="month" class="text-right">Month</Label>
+                        <Select.Root type="single" bind:value={selectedMonth} name="month">
                             <Select.Trigger class="w-[180px]">
-                                {paycheckNumber ? `Paycheck ${paycheckNumber}` : "Select"}
+                                {months.find((m) => m.value === selectedMonth)?.label ?? "Select a month"}
                             </Select.Trigger>
                             <Select.Content portalProps={{ disabled: true }}>
                                 <Select.Group>
-                                    {#each paycheckChoices as n (n)}
-                                        <Select.Item value={String(n)} label={`Paycheck ${n}`}>
-                                            Paycheck {n}
+                                    {#each months as month (month.value)}
+                                        <Select.Item value={month.value} label={month.label}>
+                                            {month.label}
                                         </Select.Item>
                                     {/each}
                                 </Select.Group>
                             </Select.Content>
                         </Select.Root>
-                        {@render fieldError(fieldErrors.paycheckNumber)}
+                        {@render fieldError(fieldErrors.month)}
                     </div>
-                {/if}
-                {#if resolvedPaydate}
-                    <p class="col-span-full text-sm text-muted-foreground">
-                        Pays {dateFmt.format(resolvedPaydate)}
-                    </p>
-                {:else if selectedMonth}
-                    <p class="col-span-full text-sm text-red-500">
-                        That month doesn’t have a paycheck {paycheckNumber}.
-                    </p>
-                {/if}
-                <div class="grid grid-cols-4 items-center gap-4">
-                    <Label for="payAmt" class="text-right">Pay Amount ($)</Label>
-                    <Input id="payAmt" placeholder="Enter Amount" bind:value={payAmount} class="col-span-3 w-[180px]"/>
-                    {@render fieldError(fieldErrors.payAmount)}
-                </div>
-                <h2 class="font-bold">Reoccuring Bills</h2>
-                <div class="grid grid-cols-4 items-center gap-4">
-                    {#each reoccurBills as bill (bill)}
-                        {@const cents = recurringBillCents(bill)}
-                        <Label class="text-right">{bill.name}</Label>
-                        <div class="col-span-3 flex items-center gap-2">
-                            <!-- A percent bill shows its amount from the pay amount and follows it
-                                 until typed over; typing turns it into a plain amount for this card. -->
-                            <Input
-                                class="w-[180px]"
-                                bind:value={
-                                    () => (bill.basisPoints === null ? bill.amount : Number.isInteger(cents) ? centsToInput(cents) : ""),
-                                    (v) => {
-                                        bill.amount = v;
-                                        bill.basisPoints = null;
-                                    }
-                                }
-                            />
-                            {#if bill.basisPoints !== null}
-                                <span class="text-muted-foreground text-xs">{basisPointsToInput(bill.basisPoints)}% of pay</span>
-                            {/if}
-                            {#if bill.dueDate}
-                                <span class="text-muted-foreground text-xs">Due {formatDueDate(bill.dueDate)}</span>
-                            {/if}
+                    {#if !monthly}
+                        <div class="grid grid-cols-4 items-center gap-4">
+                            <Label for="paycheckNumber" class="text-right">Paycheck #</Label>
+                            <Select.Root type="single" bind:value={paycheckNumber} name="paycheckNumber">
+                                <Select.Trigger class="w-[180px]">
+                                    {paycheckNumber ? `Paycheck ${paycheckNumber}` : "Select"}
+                                </Select.Trigger>
+                                <Select.Content portalProps={{ disabled: true }}>
+                                    <Select.Group>
+                                        {#each paycheckChoices as n (n)}
+                                            <Select.Item value={String(n)} label={`Paycheck ${n}`}>
+                                                Paycheck {n}
+                                            </Select.Item>
+                                        {/each}
+                                    </Select.Group>
+                                </Select.Content>
+                            </Select.Root>
+                            {@render fieldError(fieldErrors.paycheckNumber)}
                         </div>
-                    {:else}
-                        <p class="text-muted-foreground col-span-full text-sm">(None for this paycheck)</p>
-                    {/each}
-                    {@render fieldError(fieldErrors.reoccurBills)}
-                </div>
-                <h2 class="font-bold">Other Bills</h2>
-                <BillListEditor bind:bills={otherBills} bind:editing={otherBillsEditing} />
-                {@render fieldError(fieldErrors.otherBills)}
-                <div class="flex items-center justify-between gap-4">
-                    <h2 class="font-bold">{saving ? "Allowance" : "Savings?"}</h2>
-                    <SegmentedToggle
-                        bind:value={budgetMode}
-                        options={[
-                            { value: "splurge", label: "Splurge" },
-                            { value: "save", label: "Save" }
-                        ]}
-                    />
-                </div>
-                <div class="flex space-x-5">
-                    <RadioGroup.Root bind:value={budgetType} name="budgetType">
-                        <div class="flex space-x-4">
-                            <div class="flex items-center space-x-2">
-                                <RadioGroup.Item value="%" id="r1" />
-                                <Label for="r1">%</Label>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <RadioGroup.Item value="flat" id="r2" />
-                                <Label for="r2">Flat Amount</Label>
-                            </div>
-                        </div>
-                  </RadioGroup.Root>
-                  <Input placeholder="Enter Amount" bind:value={budgetAmount} class="col-span-3 w-[120px]"/>
-                </div>
-                {@render fieldError(fieldErrors.budgetType)}
-                {@render fieldError(fieldErrors.budgetAmount)}
-                {#if goalAmounts.length > 0}
-                    <h2 class="font-bold">Put Toward Goals</h2>
-                    <div class="grid grid-cols-4 items-center gap-4">
-                        {#each goalAmounts as row (row.goalId)}
-                            <Label for="goal-{row.goalId}" class="text-right">
-                                {row.name}{row.closed ? " (closed)" : ""}
-                            </Label>
-                            <Input
-                                id="goal-{row.goalId}"
-                                placeholder="$0"
-                                bind:value={row.amount}
-                                class="col-span-3 w-[180px]"
-                            />
-                        {/each}
-                        {@render fieldError(fieldErrors.goalAllocations)}
-                    </div>
-                    {#if generalSavingsCents !== null}
-                        <p
-                            class="text-sm"
-                            class:text-muted-foreground={generalSavingsCents >= 0}
-                            class:text-red-500={generalSavingsCents < 0}
-                        >
-                            General savings: {formatCents(generalSavingsCents)}
+                    {/if}
+                    {#if resolvedPaydate}
+                        <p class="col-span-full text-sm text-muted-foreground">
+                            Pays {dateFmt.format(resolvedPaydate)}
+                        </p>
+                    {:else if selectedMonth}
+                        <p class="col-span-full text-sm text-red-500">
+                            That month doesn’t have a paycheck {paycheckNumber}.
                         </p>
                     {/if}
+                    <div class="grid grid-cols-4 items-center gap-4">
+                        <Label for="payAmt" class="text-right">Pay Amount ($)</Label>
+                        <Input id="payAmt" placeholder="Enter Amount" bind:value={payAmount} class="col-span-3 w-[180px]"/>
+                        {@render fieldError(fieldErrors.payAmount)}
+                    </div>
+                </div>
+                <div class="grid gap-4" data-tour="card-recurring-bills">
+                    <h2 class="font-bold">Reoccuring Bills</h2>
+                    <div class="grid grid-cols-4 items-center gap-4">
+                        {#each reoccurBills as bill (bill)}
+                            {@const cents = recurringBillCents(bill)}
+                            <Label class="text-right">{bill.name}</Label>
+                            <div class="col-span-3 flex items-center gap-2">
+                                <!-- A percent bill shows its amount from the pay amount and follows it
+                                     until typed over; typing turns it into a plain amount for this card. -->
+                                <Input
+                                    class="w-[180px]"
+                                    bind:value={
+                                        () => (bill.basisPoints === null ? bill.amount : Number.isInteger(cents) ? centsToInput(cents) : ""),
+                                        (v) => {
+                                            bill.amount = v;
+                                            bill.basisPoints = null;
+                                        }
+                                    }
+                                />
+                                {#if bill.basisPoints !== null}
+                                    <span class="text-muted-foreground text-xs">{basisPointsToInput(bill.basisPoints)}% of pay</span>
+                                {/if}
+                                {#if bill.dueDate}
+                                    <span class="text-muted-foreground text-xs">Due {formatDueDate(bill.dueDate)}</span>
+                                {/if}
+                            </div>
+                        {:else}
+                            <p class="text-muted-foreground col-span-full text-sm">(None for this paycheck)</p>
+                        {/each}
+                        {@render fieldError(fieldErrors.reoccurBills)}
+                    </div>
+                </div>
+                <div class="grid gap-4" data-tour="card-other-bills">
+                    <h2 class="font-bold">Other Bills</h2>
+                    <BillListEditor bind:bills={otherBills} bind:editing={otherBillsEditing} />
+                    {@render fieldError(fieldErrors.otherBills)}
+                </div>
+                <div class="grid gap-4" data-tour="card-savings">
+                    <div class="flex items-center justify-between gap-4">
+                        <h2 class="font-bold">{saving ? "Allowance" : "Savings?"}</h2>
+                        <SegmentedToggle
+                            bind:value={budgetMode}
+                            options={[
+                                { value: "splurge", label: "Splurge" },
+                                { value: "save", label: "Save" }
+                            ]}
+                        />
+                    </div>
+                    <div class="flex space-x-5">
+                        <RadioGroup.Root bind:value={budgetType} name="budgetType">
+                            <div class="flex space-x-4">
+                                <div class="flex items-center space-x-2">
+                                    <RadioGroup.Item value="%" id="r1" />
+                                    <Label for="r1">%</Label>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <RadioGroup.Item value="flat" id="r2" />
+                                    <Label for="r2">Flat Amount</Label>
+                                </div>
+                            </div>
+                      </RadioGroup.Root>
+                      <Input placeholder="Enter Amount" bind:value={budgetAmount} class="col-span-3 w-[120px]"/>
+                    </div>
+                    {@render fieldError(fieldErrors.budgetType)}
+                    {@render fieldError(fieldErrors.budgetAmount)}
+                </div>
+                {#if goalAmounts.length > 0}
+                    <div class="grid gap-4" data-tour="card-goals">
+                        <h2 class="font-bold">Put Toward Goals</h2>
+                        <div class="grid grid-cols-4 items-center gap-4">
+                            {#each goalAmounts as row (row.goalId)}
+                                <Label for="goal-{row.goalId}" class="text-right">
+                                    {row.name}{row.closed ? " (closed)" : ""}
+                                </Label>
+                                <Input
+                                    id="goal-{row.goalId}"
+                                    placeholder="$0"
+                                    bind:value={row.amount}
+                                    class="col-span-3 w-[180px]"
+                                />
+                            {/each}
+                            {@render fieldError(fieldErrors.goalAllocations)}
+                        </div>
+                        {#if generalSavingsCents !== null}
+                            <p
+                                class="text-sm"
+                                class:text-muted-foreground={generalSavingsCents >= 0}
+                                class:text-red-500={generalSavingsCents < 0}
+                            >
+                                General savings: {formatCents(generalSavingsCents)}
+                            </p>
+                        {/if}
+                    </div>
                 {/if}
-                <h2 class="font-bold">Notes</h2>
-                <div class="grid grid-cols-4 items-start gap-4">
-                    <Textarea
-                        id="notes"
-                        name="notes"
-                        placeholder="(Optional)"
-                        bind:value={notes}
-                        class="col-span-4"
-                    />
+                <div class="grid gap-4" data-tour="card-notes">
+                    <h2 class="font-bold">Notes</h2>
+                    <div class="grid grid-cols-4 items-start gap-4">
+                        <Textarea
+                            id="notes"
+                            name="notes"
+                            placeholder="(Optional)"
+                            bind:value={notes}
+                            class="col-span-4"
+                        />
+                    </div>
                 </div>
             </div>
             {#if cardToEdit}

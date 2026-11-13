@@ -165,7 +165,7 @@
     <input type="hidden" name="payDay2" value={form.payDay2} />
     <input type="hidden" name="weekendRule" value={form.weekendRule} />
 
-    <Card.Root>
+    <Card.Root data-tour="pay-schedule">
         <Card.Header>
             <Card.Title>Pay schedule</Card.Title>
             <Card.Description>When you get paid and what a normal paycheck is. New cards are dated and prefilled from this.</Card.Description>

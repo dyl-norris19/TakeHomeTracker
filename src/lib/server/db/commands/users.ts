@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/index';
 import { users } from '$lib/server/db/schema/users';
 
@@ -17,4 +18,8 @@ export async function signupUser(
     }).returning();
 
     return result[0];
+}
+
+export async function markTourCompleted(userId: number) {
+    await db.update(users).set({ tourCompletedAt: new Date() }).where(eq(users.id, userId));
 }

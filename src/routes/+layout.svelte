@@ -1,4 +1,5 @@
 <script lang="ts">
+    import 'driver.js/dist/driver.css';
     import './layout.css';
     import yahoo from '$lib/assets/yahoo.jpg';
     import Navbar from '$lib/components/Navbar.svelte';
@@ -7,9 +8,19 @@
     import { page } from '$app/state';
     import SettingsIcon from '@lucide/svelte/icons/settings';
     import { Toaster } from '$lib/components/ui/sonner/index';
+    import { untrack } from 'svelte';
+    import { tour } from '$lib/tour/tour.svelte';
     import type { LayoutData } from './$types';
 
     let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
+
+    // The intro tour lives here so it survives moving between pages. This re-checks
+    // on load and after each navigation whether it should start (or resume).
+    $effect(() => {
+        const user = data.user;
+        const routeId = page.route.id;
+        untrack(() => tour.sync(user, routeId));
+    });
 </script>
 
 {#snippet loggedOutCorner()}
@@ -20,11 +31,11 @@
 
 {#snippet loggedInCorner()}
     {#if page.url.pathname === '/tracker'}
-        <Button href={resolve('/settings')} variant="outline" size="icon" aria-label="Settings">
+        <Button href={resolve('/settings')} variant="outline" size="icon" aria-label="Settings" data-tour="nav-settings">
             <SettingsIcon class="h-5 w-5" />
         </Button>
     {:else}
-        <Button href={resolve('/tracker')} variant="outline">
+        <Button href={resolve('/tracker')} variant="outline" data-tour="nav-tracker">
             Tracker
         </Button>
     {/if}

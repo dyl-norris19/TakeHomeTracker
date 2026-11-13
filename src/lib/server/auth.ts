@@ -11,7 +11,13 @@ const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 30;
 const SESSION_RENEWAL_THRESHOLD_MS = 1000 * 60 * 60 * 24 * 15;
 
 export type Session = { id: string; userId: number; expiresAt: Date };
-export type SessionUser = { id: number; email: string; firstName: string; lastName: string };
+export type SessionUser = {
+    id: number;
+    email: string;
+    firstName: string;
+    lastName: string;
+    hasSeenTour: boolean;
+};
 
 export function generateSessionToken(): string {
     return crypto.randomBytes(32).toString('base64url');
@@ -45,7 +51,8 @@ export async function validateSessionToken(
             expiresAt: sessions.expiresAt,
             email: users.email,
             firstName: users.firstName,
-            lastName: users.lastName
+            lastName: users.lastName,
+            tourCompletedAt: users.tourCompletedAt
         })
         .from(sessions)
         .innerJoin(users, eq(sessions.userId, users.id))
@@ -61,7 +68,8 @@ export async function validateSessionToken(
         id: row.userId,
         email: row.email,
         firstName: row.firstName,
-        lastName: row.lastName
+        lastName: row.lastName,
+        hasSeenTour: row.tourCompletedAt !== null
     };
 
     if (Date.now() >= session.expiresAt.getTime()) {

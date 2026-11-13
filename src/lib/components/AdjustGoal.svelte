@@ -12,14 +12,24 @@
     import { validateAdjustmentForm, type AdjustmentFormErrors } from "$lib/validation";
     import { formatCents, parseToCents } from "$lib/money";
     import type { Goal } from "$lib/server/db/queries/savings-goals";
+    import type { SampleAdjustmentForm } from "$lib/tour/sample-data";
 
-    let { goal }: { goal: Goal } = $props();
+    let {
+        goal,
+        open: adjustOpen = $bindable(false),
+        sample
+    }: {
+        goal: Goal;
+        open?: boolean;
+        // Set while the intro tour is showing this dialog: the form opens filled with
+        // these example values, and nothing in the dialog can be used or submitted.
+        sample?: SampleAdjustmentForm;
+    } = $props();
 
     let direction = $state<"add" | "withdraw">("add");
     let amount = $state<string>("");
     let note = $state<string>("");
 
-    let adjustOpen = $state<boolean>(false);
     let fieldErrors = $state<AdjustmentFormErrors>({});
     let errorMsg = $state<string>("");
 
@@ -28,8 +38,8 @@
     $effect(() => {
         if (!adjustOpen) {
             direction = "add";
-            amount = "";
-            note = "";
+            amount = sample?.amount ?? "";
+            note = sample?.note ?? "";
             fieldErrors = {};
             errorMsg = "";
         }
@@ -63,7 +73,7 @@
     </Dialog.Trigger>
     <!-- pb-6 replaces what Dialog.Footer's padding would normally supply: this
          dialog has no footer, and dialog-content itself is px-6 only. -->
-    <Dialog.Content class="pb-6">
+    <Dialog.Content class="pb-6" data-tour="adjust-goal-dialog">
         <Dialog.Header>
             <Dialog.Title>Adjust {goal.name}</Dialog.Title>
             <Dialog.Description>
@@ -76,7 +86,13 @@
         <form
             method="POST"
             action="?/adjustGoal"
+            inert={!!sample}
             use:enhance={({ cancel }) => {
+                // The tour's example form is only there to look at.
+                if (sample) {
+                    cancel();
+                    return;
+                }
                 const errors = validate();
                 if (Object.keys(errors).length > 0) {
                     fieldErrors = errors;
@@ -146,7 +162,7 @@
         </form>
         {#if goal.adjustments.length > 0}
             <Separator />
-            <div class="space-y-2">
+            <div class="space-y-2" inert={!!sample}>
                 <h3 class="text-sm font-semibold">History</h3>
                 <!-- Each row is its own form; they're siblings of the entry form above,
                      never nested inside it. -->

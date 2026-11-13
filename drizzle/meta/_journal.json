@@ -92,6 +92,13 @@
       "when": 1794514086614,
       "tag": "0012_recurring_bill_schedule",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1794585349498,
+      "tag": "0013_add_user_tour_completed_at",
+      "breakpoints": true
     }
   ]
 }
