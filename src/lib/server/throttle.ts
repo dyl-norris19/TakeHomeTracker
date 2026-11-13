@@ -38,6 +38,25 @@ export const LOGIN_IP_POLICY: ThrottlePolicy = {
     lockDurationsMs: [15 * MINUTE_MS, HOUR_MS, 4 * HOUR_MS, DAY_MS, 7 * DAY_MS]
 };
 
+/** Password-reset emails per account. Flat for the same reason as logins. */
+export const RESET_EMAIL_POLICY: ThrottlePolicy = {
+    maxFailures: 3,
+    windowMs: HOUR_MS,
+    lockDurationsMs: [HOUR_MS]
+};
+
+/** Password-reset requests per address. */
+export const RESET_IP_POLICY: ThrottlePolicy = {
+    maxFailures: 10,
+    windowMs: HOUR_MS,
+    lockDurationsMs: [HOUR_MS, 4 * HOUR_MS, DAY_MS, 7 * DAY_MS]
+};
+
+/** Key of the per-account login throttle, shared so a password reset can clear it. */
+export function loginEmailKey(email: string): string {
+    return `login:email:${email}`;
+}
+
 type ThrottleState = typeof authThrottles.$inferSelect;
 
 // Everything below is synchronous (better-sqlite3), so each read-then-write runs

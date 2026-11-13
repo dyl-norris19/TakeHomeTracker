@@ -17,3 +17,10 @@ services:
       # Without these every user appears to come from the proxy's address.
       - ADDRESS_HEADER=X-Forwarded-For
       - XFF_DEPTH=1
+      # Outgoing mail for password reset links. Optional: leave unset in .env
+      # and reset emails are skipped (a warning is logged).
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}

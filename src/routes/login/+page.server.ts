@@ -13,6 +13,7 @@ import {
     clientIp,
     describeWait,
     failAttempt,
+    loginEmailKey,
     refundAttempt,
     type Throttle
 } from '$lib/server/throttle';
@@ -53,7 +54,7 @@ export const actions: Actions = {
             return fail(400, { error: 'Please enter a valid email address.', email });
         }
 
-        const emailThrottle: Throttle = { key: `login:email:${email}`, policy: LOGIN_EMAIL_POLICY };
+        const emailThrottle: Throttle = { key: loginEmailKey(email), policy: LOGIN_EMAIL_POLICY };
         const ip = clientIp(event);
         const ipThrottle: Throttle | null = ip
             ? { key: `login:ip:${ip}`, policy: LOGIN_IP_POLICY }

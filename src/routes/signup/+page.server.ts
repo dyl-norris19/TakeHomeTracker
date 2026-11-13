@@ -4,7 +4,7 @@ import type { Actions } from './$types';
 import { signupUser } from '$lib/server/db/commands/users';
 import { getUserByEmail } from '$lib/server/db/queries/users';
 import { getFormString } from '$lib/server/form-data';
-import { isValidEmail } from '$lib/validation';
+import { isValidEmail, passwordError } from '$lib/validation';
 
 export const actions: Actions = {
     default: async ({ request }) => {
@@ -30,6 +30,10 @@ export const actions: Actions = {
         }
         if (!password) {
             return fail(400, { error: 'Enter a password.', email, firstName, lastName });
+        }
+        const passwordProblem = passwordError(password);
+        if (passwordProblem) {
+            return fail(400, { error: passwordProblem, email, firstName, lastName });
         }
         if (!confirmPassword) {
             return fail(400, { error: 'Enter your password again to confirm it.', email, firstName, lastName });

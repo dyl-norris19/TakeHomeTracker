@@ -7,9 +7,11 @@
 	import { resolve } from "$app/paths";
 
 	let {
-		form
+		form,
+		notice
 	}: {
 		form?: { error?: string; email?: string } | null;
+		notice?: string;
 	} = $props();
 </script>
 
@@ -25,6 +27,8 @@
 			<div class="grid gap-4">
 				{#if form?.error}
 					<p class="text-sm text-red-500">{form.error}</p>
+				{:else if notice}
+					<p class="text-sm text-green-600">{notice}</p>
 				{/if}
 				<div class="grid gap-2">
 					<Label for="email">Email</Label>
@@ -33,7 +37,7 @@
 				<div class="grid gap-2">
 					<div class="flex items-center">
 						<Label for="password">Password</Label>
-						<a href="##" class="ml-auto inline-block text-sm underline">
+						<a href={resolve('/forgot-password')} class="ml-auto inline-block text-sm underline">
 							Forgot your password?
 						</a>
 					</div>

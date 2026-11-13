@@ -10,6 +10,21 @@ export function isValidEmail(value: string): boolean {
 	return EMAIL_PATTERN.test(value);
 }
 
+export const MIN_PASSWORD_LENGTH = 8;
+// bcrypt only reads the first 72 bytes, so anything past that would be ignored.
+const MAX_PASSWORD_BYTES = 72;
+
+/** Checks a new password against the password rules; null means it's fine. */
+export function passwordError(password: string): string | null {
+	if (password.length < MIN_PASSWORD_LENGTH) {
+		return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+	}
+	if (new TextEncoder().encode(password).length > MAX_PASSWORD_BYTES) {
+		return `Password must be ${MAX_PASSWORD_BYTES} characters or fewer.`;
+	}
+	return null;
+}
+
 export const MONTHS = [
 	'January',
 	'February',
