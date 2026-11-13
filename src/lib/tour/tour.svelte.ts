@@ -8,11 +8,6 @@ import { TOUR_STEPS, type TourDialog, type TourRoute, type TourStep } from './st
 // Remembers the current step so a refresh mid-tour picks up where it was.
 const STORAGE_KEY = 'tht-tour-step';
 
-// TEMPORARY: "has seen the tour" is kept in this browser's localStorage for now.
-// The plan is a per-account flag in the database (users.tour_completed_at); that
-// code is parked in a git stash until the migration goes in.
-const SEEN_KEY = 'tht-tour-seen';
-
 // The dialog's open/close animation runs for 200ms; a step inside it is only
 // measured correctly once that has finished.
 const DIALOG_SETTLE_MS = 250;
@@ -67,12 +62,15 @@ class Tour {
     #silent = false;
     #resumeChecked = false;
     #starting = false;
+    // Seen during this visit. The account's flag is saved straight away, but the
+    // layout's copy of the user only catches up the next time it reloads.
+    #seen = false;
 
     /**
      * Called by the root layout on load and after every navigation. Resumes a
      * tour interrupted by a refresh, or starts it for a user who hasn't seen it.
      */
-    sync(user: object | null, routeId: string | null) {
+    sync(user: { hasSeenTour: boolean } | null, routeId: string | null) {
         if (!user) {
             this.#end(false);
             sessionStorage.removeItem(STORAGE_KEY);
@@ -98,7 +96,7 @@ class Tour {
             }
         }
 
-        if (!localStorage.getItem(SEEN_KEY) && routeId === '/tracker') {
+        if (!user.hasSeenTour && !this.#seen && routeId === '/tracker') {
             void this.start();
         }
     }
@@ -261,7 +259,7 @@ class Tour {
         return closedAny;
     }
 
-    /** Takes the tour off screen. `markSeen` records it so it won't auto-start again. */
+    /** Takes the tour off screen. `markSeen` records it on the account so it won't auto-start again. */
     #end(markSeen: boolean) {
         if (!this.active) {
             return;
@@ -276,7 +274,9 @@ class Tour {
         this.#silent = false;
 
         if (markSeen) {
-            localStorage.setItem(SEEN_KEY, '1');
+            this.#seen = true;
+            // If this fails the tour simply shows again next visit.
+            fetch(resolve('/tour/complete'), { method: 'POST' }).catch(() => {});
         }
     }
 }
