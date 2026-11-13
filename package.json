@@ -24,6 +24,7 @@
     "autoprefixer": "^10.4.20",
     "bits-ui": "^1.8.0",
     "clsx": "^2.1.1",
+    "driver.js": "1.14.0",
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.9.1",
     "eslint-plugin-svelte": "^3.23.0",

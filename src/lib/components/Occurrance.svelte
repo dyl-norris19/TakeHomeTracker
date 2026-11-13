@@ -17,12 +17,15 @@
         card,
         showPaycheckNumber = false,
         paydaySettings,
-        goals = []
+        goals = [],
+        demo = false
     }: {
         card: CardData;
         showPaycheckNumber?: boolean;
         paydaySettings?: PaydaySettings;
         goals?: Goal[];
+        /** The tour's made-up sample card: labelled as an example, with nothing to submit. */
+        demo?: boolean;
     } = $props();
 
     let editOpen = $state<boolean>(false);
@@ -78,7 +81,7 @@
 
 </script>
 
-<div>
+<div data-tour="card">
     <Card.Root class="max-w-[960px] w-full mx-auto">
         <Card.Header>
             <Card.Title class="flex justify-between items-center">
@@ -91,54 +94,58 @@
                         size="icon"
                         class="h-8 w-8 text-muted-foreground hover:text-foreground"
                         aria-label="Edit card"
+                        data-tour="card-edit"
                         onclick={() => (editOpen = true)}
                     >
                         <Pencil class="h-4 w-4" />
                     </Button>
-                    <AddCard cardToEdit={card} {paydaySettings} {goals} bind:open={editOpen} />
-                    <Dialog.Root bind:open={deleteOpen}>
-                        <Dialog.Trigger
-                            type="button"
-                            class={cn(
-                                buttonVariants({ variant: "ghost", size: "icon" }),
-                                "h-8 w-8 text-muted-foreground hover:text-destructive"
-                            )}
-                            aria-label="Delete card"
-                        >
-                            <Trash2 class="h-4 w-4" />
-                        </Dialog.Trigger>
-                        <Dialog.Content>
-                            <Dialog.Header>
-                                <Dialog.Title>Delete this card?</Dialog.Title>
-                                <Dialog.Description>
-                                    The {card.month} card will be permanently deleted. This can't be undone.
-                                </Dialog.Description>
-                            </Dialog.Header>
-                            <form
-                                method="POST"
-                                action="?/deleteCard"
-                                use:enhance={() => {
-                                    return async ({ result, update }) => {
-                                        await update();
-                                        if (result.type === "success") {
-                                            deleteOpen = false;
-                                        }
-                                    };
-                                }}
+                    <!-- The sample card is only there to look at, so it has no edit or delete forms. -->
+                    {#if !demo}
+                        <AddCard cardToEdit={card} {paydaySettings} {goals} bind:open={editOpen} />
+                        <Dialog.Root bind:open={deleteOpen}>
+                            <Dialog.Trigger
+                                type="button"
+                                class={cn(
+                                    buttonVariants({ variant: "ghost", size: "icon" }),
+                                    "h-8 w-8 text-muted-foreground hover:text-destructive"
+                                )}
+                                aria-label="Delete card"
                             >
-                                <input type="hidden" name="cardId" value={card.id} />
-                                <Dialog.Footer>
-                                    <Button type="button" variant="secondary" onclick={() => (deleteOpen = false)}>
-                                        Cancel
-                                    </Button>
-                                    <Button type="submit" variant="destructive">Delete</Button>
-                                </Dialog.Footer>
-                            </form>
-                        </Dialog.Content>
-                    </Dialog.Root>
+                                <Trash2 class="h-4 w-4" />
+                            </Dialog.Trigger>
+                            <Dialog.Content>
+                                <Dialog.Header>
+                                    <Dialog.Title>Delete this card?</Dialog.Title>
+                                    <Dialog.Description>
+                                        The {card.month} card will be permanently deleted. This can't be undone.
+                                    </Dialog.Description>
+                                </Dialog.Header>
+                                <form
+                                    method="POST"
+                                    action="?/deleteCard"
+                                    use:enhance={() => {
+                                        return async ({ result, update }) => {
+                                            await update();
+                                            if (result.type === "success") {
+                                                deleteOpen = false;
+                                            }
+                                        };
+                                    }}
+                                >
+                                    <input type="hidden" name="cardId" value={card.id} />
+                                    <Dialog.Footer>
+                                        <Button type="button" variant="secondary" onclick={() => (deleteOpen = false)}>
+                                            Cancel
+                                        </Button>
+                                        <Button type="submit" variant="destructive">Delete</Button>
+                                    </Dialog.Footer>
+                                </form>
+                            </Dialog.Content>
+                        </Dialog.Root>
+                    {/if}
                 </div>
             </Card.Title>
-            <Card.Description>{secondsToDate()}</Card.Description>
+            <Card.Description>{demo ? "Example card · not saved" : secondsToDate()}</Card.Description>
         </Card.Header>
         <Card.Content>
             {#each card.reoccurBills as bill, index (bill.name + index)}

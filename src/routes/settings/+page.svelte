@@ -4,9 +4,19 @@
     import * as Tooltip from "$lib/components/ui/tooltip/index";
     import PayScheduleSection from "$lib/components/settings/PayScheduleSection.svelte";
     import RecurringBillsSection from "$lib/components/settings/RecurringBillsSection.svelte";
+    import { Button } from "$lib/components/ui/button/index";
+    import { tour } from "$lib/tour/tour.svelte";
+    import { samplePaySchedule, sampleRecurringBills } from "$lib/tour/sample-data";
     import type { PageData } from "./$types";
 
     let { data }: { data: PageData } = $props();
+
+    // While the intro tour runs, a section the user hasn't filled in yet shows
+    // example data instead (never saved; the page is inert for as long as it's up).
+    let paydaySettings = $derived(data.paydaySettings ?? (tour.active ? samplePaySchedule() : undefined));
+    let recurringBills = $derived(
+        tour.active && data.recurringBills.length === 0 ? sampleRecurringBills() : data.recurringBills
+    );
 
     let payDirty = $state(false);
     let billsDirty = $state(false);
@@ -44,14 +54,19 @@
 <svelte:head><title>Settings · TakeHome Tracker</title></svelte:head>
 
 <Tooltip.Provider>
-    <div class="flex justify-center px-8 py-8">
+    <div class="flex justify-center px-8 py-8" inert={tour.active}>
         <div class="flex w-full max-w-[900px] flex-col gap-6">
-            <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between gap-2">
                 <h1 class="text-2xl font-semibold">Settings</h1>
+                <Button type="button" variant="outline" onclick={() => tour.start()}>Replay tour</Button>
             </div>
 
-            <PayScheduleSection paydaySettings={data.paydaySettings} bind:dirty={payDirty} bind:takeHome />
-            <RecurringBillsSection recurringBills={data.recurringBills} {takeHome} bind:dirty={billsDirty} />
+            <!-- The sections copy their data once when created, so they're rebuilt when
+                 the tour starts or ends to swap the example data in and back out. -->
+            {#key tour.active}
+                <PayScheduleSection {paydaySettings} bind:dirty={payDirty} bind:takeHome />
+                <RecurringBillsSection {recurringBills} {takeHome} bind:dirty={billsDirty} />
+            {/key}
         </div>
     </div>
 </Tooltip.Provider>

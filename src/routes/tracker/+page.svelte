@@ -5,6 +5,14 @@
     import SavingFor from '$lib/components/SavingFor.svelte';
     import 'normalize.css';
     import { isMonthly } from '$lib/paydates';
+    import { tour } from '$lib/tour/tour.svelte';
+    import {
+        sampleCard,
+        sampleCardForm,
+        sampleGoal,
+        samplePaySchedule,
+        sampleRecurringBills
+    } from '$lib/tour/sample-data';
     import { tick } from 'svelte';
     import type { PageData } from './$types';
 
@@ -12,13 +20,24 @@
 
     let email = $derived(data.email);
 
-    let showPaycheckNumber = $derived(!!data.paydaySettings && !isMonthly(data.paydaySettings));
-
     let userCards = $derived(data.cards);
+
+    // While the intro tour runs, anything the user hasn't set up yet is stood in
+    // for by example data so each step has something to show. None of it is saved
+    // (see $lib/tour/sample-data.ts), and the page is inert for as long as it's up.
+    const exampleGoal = sampleGoal();
+    let paydaySettings = $derived(data.paydaySettings ?? (tour.active ? samplePaySchedule() : undefined));
+    let recurringBills = $derived(
+        tour.active && data.recurringBills.length === 0 ? sampleRecurringBills() : data.recurringBills
+    );
+    let goals = $derived(tour.active && data.goals.length === 0 ? [exampleGoal] : data.goals);
+    let tourSampleCard = $derived(tour.active && userCards.length === 0 ? sampleCard() : null);
+
+    let showPaycheckNumber = $derived(!!paydaySettings && !isMonthly(paydaySettings));
 
     // Open goals first, closed ones after; each group keeps the query's newest-first order.
     let sortedGoals = $derived(
-        [...data.goals].sort((a, b) => Number(a.completedAt !== null) - Number(b.completedAt !== null))
+        [...goals].sort((a, b) => Number(a.completedAt !== null) - Number(b.completedAt !== null))
     );
 
     // Tracks whether a scroll area is at its top/bottom so the edge fades can
@@ -70,7 +89,7 @@
 
 <svelte:window onresize={updateFades} />
 
-<div class="flex h-full flex-col overflow-hidden">
+<div class="flex h-full flex-col overflow-hidden" inert={tour.active}>
 
     <div class="flex w-full flex-1 min-h-0 justify-center px-8 py-8">
         <div class="flex h-full w-full max-w-[1250px] justify-between space-x-8">
@@ -78,12 +97,19 @@
                 {#if email}
                     <!-- Fixed section: stays put while the goals below it scroll. -->
                     <div class="flex shrink-0 flex-col items-start space-y-8">
-                        <AddCard
-                            recurringBills={data.recurringBills}
-                            paydaySettings={data.paydaySettings}
-                            goals={data.goals}
-                        />
-                        <NewGoal />
+                        <!-- data-tour wrappers are what the intro tour highlights (see $lib/tour/steps.ts). -->
+                        <div data-tour="new-card">
+                            <AddCard
+                                {recurringBills}
+                                {paydaySettings}
+                                {goals}
+                                sample={tour.active ? sampleCardForm() : undefined}
+                                bind:open={tour.addCardOpen}
+                            />
+                        </div>
+                        <div data-tour="new-goal">
+                            <NewGoal />
+                        </div>
                     </div>
                     {#if sortedGoals.length > 0}
                         <div
@@ -107,12 +133,15 @@
                 bind:this={cardsFade.el}
                 onscroll={cardsFade.update}
             >
+                {#if tourSampleCard}
+                    <Occurrance card={tourSampleCard} {showPaycheckNumber} goals={[exampleGoal]} demo />
+                {/if}
                 {#each userCards as card (card.id)}
                     <Occurrance
                         {card}
                         {showPaycheckNumber}
-                        paydaySettings={data.paydaySettings}
-                        goals={data.goals}
+                        {paydaySettings}
+                        {goals}
                     />
                 {/each}
             </div>

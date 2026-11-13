@@ -192,7 +192,7 @@
     }}
 >
     <input type="hidden" name="bills" value={billsJson} />
-    <Card.Root>
+    <Card.Root data-tour="recurring-bills">
         <Card.Header>
             <Card.Title>Recurring bills</Card.Title>
             <Card.Description>Bills that come out every month. They're added to new cards automatically based on when they're due.</Card.Description>
