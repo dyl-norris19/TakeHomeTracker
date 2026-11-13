@@ -7,6 +7,7 @@
     import { resolve } from '$app/paths';
     import { page } from '$app/state';
     import SettingsIcon from '@lucide/svelte/icons/settings';
+    import LogOutIcon from '@lucide/svelte/icons/log-out';
     import { Toaster } from '$lib/components/ui/sonner/index';
     import { untrack } from 'svelte';
     import { tour } from '$lib/tour/tour.svelte';
@@ -40,8 +41,10 @@
         </Button>
     {/if}
     <form method="POST" action="/logout">
-        <Button type="submit">
-            Log out
+        <!-- Phones show just the icon so the navbar fits; sm and up shows the label. -->
+        <Button type="submit" aria-label="Log out" class="px-3 sm:px-4">
+            <LogOutIcon class="h-5 w-5 sm:hidden" />
+            <span class="hidden sm:inline">Log out</span>
         </Button>
     </form>
 {/snippet}
@@ -51,8 +54,9 @@
 <Toaster richColors position="bottom-right" />
 
 <!-- Navbar keeps its natural height; the content slot below gets exactly
-     "one screen minus the navbar" via flex-1 -->
-<div class="flex h-screen flex-col overflow-hidden">
+     "one screen minus the navbar" via flex-1. h-dvh (not h-screen) so a phone
+     browser's URL bar doesn't push the bottom of the page off screen. -->
+<div class="flex h-dvh flex-col overflow-hidden">
     <Navbar>
         {#if data.user}
             {@render loggedInCorner()}

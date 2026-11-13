@@ -47,7 +47,7 @@
         </div>
 
         <!-- Middle: Logo -->
-        <a href={resolve('/')} class="text-xl font-semibold">
+        <a href={resolve('/')} class="whitespace-nowrap text-lg font-semibold sm:text-xl">
             TakeHome Tracker
         </a>
 

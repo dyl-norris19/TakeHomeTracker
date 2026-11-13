@@ -174,10 +174,11 @@
             <div class="grid gap-2">
                 <Label>How often are you paid?</Label>
                 <!-- Clicking the selected item would clear a single toggle group; ignore that so a choice is always set. -->
+                <!-- Phones: a 2x2 grid, since the four options don't fit on one line. -->
                 <ToggleGroup.Root
                     type="single"
                     variant="outline"
-                    class="w-fit justify-start"
+                    class="grid w-full grid-cols-2 sm:flex sm:w-fit sm:justify-start"
                     bind:value={() => form.frequency, (v) => v && (form.frequency = v as Frequency)}
                 >
                     <ToggleGroup.Item value="weekly">Weekly</ToggleGroup.Item>
@@ -195,7 +196,7 @@
                             type="button"
                             class={cn(
                                 buttonVariants({ variant: "outline" }),
-                                "w-[240px] justify-start text-left font-normal",
+                                "w-full justify-start text-left font-normal sm:w-[240px]",
                                 !form.anchorDate && "text-muted-foreground"
                             )}
                         >
@@ -213,7 +214,7 @@
                     <div class="flex items-center gap-2">
                         {#if form.frequency === "monthly"}
                             <Select.Root type="single" bind:value={form.payDay1}>
-                                <Select.Trigger class="w-[180px]">{dayLabel(form.payDay1)}</Select.Trigger>
+                                <Select.Trigger class="min-w-0 flex-1 sm:w-[180px] sm:flex-none">{dayLabel(form.payDay1)}</Select.Trigger>
                                 <Select.Content>
                                     {#each dayOptions as day (day)}
                                         <Select.Item value={day} label={dayLabel(day)}>{dayLabel(day)}</Select.Item>
@@ -222,7 +223,7 @@
                             </Select.Root>
                         {:else}
                             <Select.Root type="single" bind:value={form.payDay1}>
-                                <Select.Trigger class="w-[180px]">{dayLabel(form.payDay1)}</Select.Trigger>
+                                <Select.Trigger class="min-w-0 flex-1 sm:w-[180px] sm:flex-none">{dayLabel(form.payDay1)}</Select.Trigger>
                                 <Select.Content>
                                     {#each dayOptions as day (day)}
                                         <Select.Item value={day} label={dayLabel(day)}>{dayLabel(day)}</Select.Item>
@@ -231,7 +232,7 @@
                             </Select.Root>
                             <span class="text-muted-foreground text-sm">and</span>
                             <Select.Root type="single" bind:value={form.payDay2}>
-                                <Select.Trigger class="w-[180px]">{dayLabel(form.payDay2)}</Select.Trigger>
+                                <Select.Trigger class="min-w-0 flex-1 sm:w-[180px] sm:flex-none">{dayLabel(form.payDay2)}</Select.Trigger>
                                 <Select.Content>
                                     {#each dayOptions as day (day)}
                                         <Select.Item value={day} label={dayLabel(day)}>{dayLabel(day)}</Select.Item>
@@ -243,10 +244,11 @@
                 </div>
                 <div class="grid gap-2">
                     <Label>If payday lands on a weekend</Label>
+                    <!-- Phones: stacked, one option per line. -->
                     <ToggleGroup.Root
                         type="single"
                         variant="outline"
-                        class="w-fit justify-start"
+                        class="grid w-full grid-cols-1 sm:flex sm:w-fit sm:justify-start"
                         bind:value={() => form.weekendRule, (v) => v && (form.weekendRule = v as WeekendRule)}
                     >
                         <ToggleGroup.Item value="before">Paid the Friday before</ToggleGroup.Item>
@@ -258,7 +260,7 @@
 
             <div class="grid gap-2">
                 <Label for="take-home">Salary <span class="text-muted-foreground font-normal">(optional)</span></Label>
-                <div class="relative w-[180px]">
+                <div class="relative w-full sm:w-[180px]">
                     <span class="text-muted-foreground pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm">$</span>
                     <Input id="take-home" name="takeHome" class="pl-6" placeholder="0.00" bind:value={form.takeHome} />
                 </div>
