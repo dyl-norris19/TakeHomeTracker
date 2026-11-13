@@ -198,8 +198,13 @@
             <Card.Description>Bills that come out every month. They're added to new cards automatically based on when they're due.</Card.Description>
         </Card.Header>
         <Card.Content class="grid gap-3">
-            <Table.Root>
-                <Table.Header>
+            <!-- Phones (below md) can't fit five columns of inputs, so the table is
+                 un-tabled there: the header is hidden and each bill becomes a stacked
+                 block (name, amount, how it's paid, then due day + remove button).
+                 That's what the block/grid/p-0 classes are for; every md: class puts
+                 the real table layout back. -->
+            <Table.Root class="block md:table">
+                <Table.Header class="hidden md:table-header-group">
                     <Table.Row class="hover:bg-transparent">
                         <Table.Head>Name</Table.Head>
                         <Table.Head class="w-[210px]">Amount</Table.Head>
@@ -208,28 +213,33 @@
                         <Table.Head class="w-[48px]"><span class="sr-only">Actions</span></Table.Head>
                     </Table.Row>
                 </Table.Header>
-                <Table.Body>
+                <Table.Body class="block md:table-row-group">
                     {#each bills as bill (bill.key)}
                         {@const rowStatus = rowState(bill)}
                         <!-- Left border + tint marks added and to-be-removed rows. -->
-                        <Table.Row class={cn("border-l-4 border-l-transparent transition-colors", rowClass[rowStatus])}>
+                        <Table.Row
+                            class={cn(
+                                "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-3 border-l-4 border-l-transparent py-4 pl-3 transition-colors md:table-row",
+                                rowClass[rowStatus]
+                            )}
+                        >
                             {#if rowStatus === "deleted"}
-                                <Table.Cell colspan={4}>
+                                <Table.Cell colspan={4} class="block p-0 md:table-cell md:p-4">
                                     <div class="text-muted-foreground flex items-center gap-2">
                                         <span class="line-through">{bill.name || "Untitled bill"}</span>
                                         <Badge variant="destructive">Will be removed</Badge>
                                     </div>
                                 </Table.Cell>
-                                <Table.Cell>{@render iconButton("Undo remove", () => undoRemove(bill), Undo2)}</Table.Cell>
+                                <Table.Cell class="block p-0 md:table-cell md:p-4">{@render iconButton("Undo remove", () => undoRemove(bill), Undo2)}</Table.Cell>
                             {:else}
-                                <Table.Cell class="align-top">
+                                <Table.Cell class="col-span-2 block p-0 align-top md:table-cell md:p-4">
                                     <div class="flex items-center gap-2">
                                         <Input placeholder="Rent, phone, Netflix…" bind:value={bill.name} />
                                         {#if rowStatus === "new"}<Badge variant="secondary">New</Badge>{/if}
                                     </div>
                                 </Table.Cell>
 
-                                <Table.Cell class="align-top">
+                                <Table.Cell class="col-span-2 block p-0 align-top md:table-cell md:p-4">
                                     <div class="grid gap-1">
                                         <div class="flex gap-2">
                                             <Input
@@ -256,11 +266,18 @@
 
                                 {#if bill.amountType === "percent"}
                                     <!-- % bills come off every paycheck, so how it's paid and due day don't apply. -->
-                                    <Table.Cell colspan={2} class="align-top">
+                                    <Table.Cell colspan={2} class="block p-0 align-top md:table-cell md:p-4">
                                         <span class="text-muted-foreground inline-block py-2 text-sm">Comes out of every paycheck</span>
                                     </Table.Cell>
                                 {:else}
-                                    <Table.Cell class="align-top">
+                                    <!-- Phones: full width, unless it's the block's last line (a split
+                                         bill has no due day), where it leaves room for the remove button. -->
+                                    <Table.Cell
+                                        class={cn(
+                                            "block p-0 align-top md:table-cell md:p-4",
+                                            bill.allocation === "single" && "col-span-2"
+                                        )}
+                                    >
                                         <div class="grid gap-1">
                                             <ToggleGroup.Root
                                                 type="single"
@@ -280,7 +297,13 @@
                                     </Table.Cell>
 
                                     <!-- Split bills come off every paycheck too, so only single bills have a due day. -->
-                                    <Table.Cell class="align-top">
+                                    <!-- On phones the cell is dropped entirely when empty so it doesn't leave a gap. -->
+                                    <Table.Cell
+                                        class={cn(
+                                            "p-0 align-top md:table-cell md:p-4",
+                                            bill.allocation === "single" ? "block" : "hidden"
+                                        )}
+                                    >
                                         {#if bill.allocation === "single"}
                                             <Select.Root type="single" bind:value={bill.dueDay}>
                                                 <Select.Trigger class={cn("w-full", !bill.dueDay && "text-muted-foreground")}>
@@ -296,12 +319,13 @@
                                     </Table.Cell>
                                 {/if}
 
-                                <Table.Cell class="align-top">{@render iconButton("Remove bill", () => remove(bill), Trash2)}</Table.Cell>
+                                <!-- Phones: bottom right of the block, beside whichever field is the last line. -->
+                                <Table.Cell class="block self-end p-0 align-top md:table-cell md:p-4">{@render iconButton("Remove bill", () => remove(bill), Trash2)}</Table.Cell>
                             {/if}
                         </Table.Row>
                     {:else}
-                        <Table.Row>
-                            <Table.Cell colspan={5} class="text-muted-foreground text-center">No recurring bills yet.</Table.Cell>
+                        <Table.Row class="block md:table-row">
+                            <Table.Cell colspan={5} class="text-muted-foreground block text-center md:table-cell">No recurring bills yet.</Table.Cell>
                         </Table.Row>
                     {/each}
                 </Table.Body>

@@ -19,9 +19,11 @@
 
 <!-- Section footer: validation message on the left, Discard/Save on the right.
      Save submits the surrounding <form>; results are announced with a toast. -->
-<div class="flex w-full items-center justify-between gap-4">
-    <p class="text-sm text-red-500" aria-live="polite">{error}</p>
-    <div class="flex gap-2">
+<!-- flex-wrap + mr-auto: on a phone a long message takes its own line and the
+     buttons drop underneath, still on the right. -->
+<div class="flex w-full flex-wrap items-center justify-end gap-x-4 gap-y-2">
+    <p class="mr-auto text-sm text-red-500" aria-live="polite">{error}</p>
+    <div class="flex shrink-0 gap-2">
         <Button type="button" variant="ghost" disabled={!dirty || saving} onclick={ondiscard}>
             Discard
         </Button>

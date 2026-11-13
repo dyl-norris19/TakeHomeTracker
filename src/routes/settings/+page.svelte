@@ -54,7 +54,7 @@
 <svelte:head><title>Settings · TakeHome Tracker</title></svelte:head>
 
 <Tooltip.Provider>
-    <div class="flex justify-center px-8 py-8" inert={tour.active}>
+    <div class="flex justify-center px-4 py-4 md:px-8 md:py-8" inert={tour.active}>
         <div class="flex w-full max-w-[900px] flex-col gap-6">
             <div class="flex items-center justify-between gap-2">
                 <h1 class="text-2xl font-semibold">Settings</h1>
