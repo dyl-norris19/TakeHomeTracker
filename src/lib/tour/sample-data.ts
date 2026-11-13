@@ -44,9 +44,9 @@ export function sampleGoal(): Goal {
         name: 'Vacation (example)',
         targetCents: 200000,
         startingCents: 50000,
-        // The starting amount plus the $100 the sample card puts toward it.
-        savedCents: 60000,
-        adjustments: [],
+        // The starting amount, the $100 the sample card puts toward it, and the adjustment below.
+        savedCents: 65000,
+        adjustments: [{ id: -1, amountCents: 5000, note: 'Birthday money', createdAt: new Date() }],
         hasCardAllocations: true,
         completedAt: null
     };
@@ -95,4 +95,18 @@ export function sampleCardForm(): SampleCardForm {
         budgetAmount: '20',
         goalAmount: '100.00'
     };
+}
+
+/** Example values the tour fills the New Goal form with. Same goal as {@link sampleGoal}. */
+export type SampleGoalForm = { name: string; targetAmount: string; startingAmount: string };
+
+export function sampleGoalForm(): SampleGoalForm {
+    return { name: 'Vacation', targetAmount: '2000.00', startingAmount: '500.00' };
+}
+
+/** Example values the tour fills a goal's adjustment form with. */
+export type SampleAdjustmentForm = { amount: string; note: string };
+
+export function sampleAdjustmentForm(): SampleAdjustmentForm {
+    return { amount: '50.00', note: 'Tax refund' };
 }

@@ -10,6 +10,7 @@
         sampleCard,
         sampleCardForm,
         sampleGoal,
+        sampleGoalForm,
         samplePaySchedule,
         sampleRecurringBills
     } from '$lib/tour/sample-data';
@@ -104,11 +105,14 @@
                                 {paydaySettings}
                                 {goals}
                                 sample={tour.active ? sampleCardForm() : undefined}
-                                bind:open={tour.addCardOpen}
+                                bind:open={tour.dialogs['new-card']}
                             />
                         </div>
                         <div data-tour="new-goal">
-                            <NewGoal />
+                            <NewGoal
+                                sample={tour.active ? sampleGoalForm() : undefined}
+                                bind:open={tour.dialogs['new-goal']}
+                            />
                         </div>
                     </div>
                     {#if sortedGoals.length > 0}
@@ -119,8 +123,8 @@
                             bind:this={goalsFade.el}
                             onscroll={goalsFade.update}
                         >
-                            {#each sortedGoals as goal (goal.id)}
-                                <SavingFor {goal} />
+                            {#each sortedGoals as goal, index (goal.id)}
+                                <SavingFor {goal} tourTarget={index === 0} />
                             {/each}
                         </div>
                     {/if}

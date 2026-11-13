@@ -5,6 +5,9 @@
 
 export type TourRoute = '/tracker' | '/settings';
 
+/** The dialogs the tour opens and closes itself. */
+export type TourDialog = 'new-card' | 'new-goal' | 'adjust-goal';
+
 export type TourStep = {
     route: TourRoute;
     element?: string;
@@ -12,8 +15,8 @@ export type TourStep = {
     description: string;
     side?: 'top' | 'right' | 'bottom' | 'left';
     align?: 'start' | 'center' | 'end';
-    /** Shown inside the New Card dialog, which the tour opens and closes itself. */
-    dialog?: boolean;
+    /** Shown inside this dialog, which the tour opens for the step and closes after. */
+    dialog?: TourDialog;
     /** Skipped when its element isn't on the page. */
     optional?: boolean;
     /**
@@ -86,7 +89,7 @@ export const TOUR_STEPS: TourStep[] = [
     },
     {
         route: '/tracker',
-        dialog: true,
+        dialog: 'new-card',
         element: '[data-tour="card-basics"]',
         title: 'Basics',
         description:
@@ -96,7 +99,7 @@ export const TOUR_STEPS: TourStep[] = [
     },
     {
         route: '/tracker',
-        dialog: true,
+        dialog: 'new-card',
         element: '[data-tour="card-recurring-bills"]',
         title: 'Recurring bills',
         description:
@@ -106,7 +109,7 @@ export const TOUR_STEPS: TourStep[] = [
     },
     {
         route: '/tracker',
-        dialog: true,
+        dialog: 'new-card',
         element: '[data-tour="card-other-bills"]',
         title: 'Other bills',
         description: 'One-off costs for this paycheck only, like a car repair or groceries.',
@@ -115,7 +118,7 @@ export const TOUR_STEPS: TourStep[] = [
     },
     {
         route: '/tracker',
-        dialog: true,
+        dialog: 'new-card',
         element: '[data-tour="card-savings"]',
         title: 'Savings or allowance',
         description:
@@ -125,7 +128,7 @@ export const TOUR_STEPS: TourStep[] = [
     },
     {
         route: '/tracker',
-        dialog: true,
+        dialog: 'new-card',
         optional: true,
         element: '[data-tour="card-goals"]',
         title: 'Put toward goals',
@@ -136,7 +139,7 @@ export const TOUR_STEPS: TourStep[] = [
     },
     {
         route: '/tracker',
-        dialog: true,
+        dialog: 'new-card',
         element: '[data-tour="card-notes"]',
         title: 'Notes',
         description: 'Anything you want to remember about this paycheck. Optional.',
@@ -149,6 +152,44 @@ export const TOUR_STEPS: TourStep[] = [
         title: 'Goals',
         description:
             'A goal is something you’re saving up for. Create your goals <strong>before</strong> you make a card: a card can only put money toward goals that already exist.',
+        side: 'right',
+        align: 'start'
+    },
+    {
+        route: '/tracker',
+        dialog: 'new-goal',
+        element: '[data-tour="new-goal-dialog"]',
+        title: 'Creating a goal',
+        description:
+            'Give it a name and a target amount. If you’ve already put some money aside for it, enter that too so the goal starts from there.',
+        side: 'right',
+        align: 'start'
+    },
+    {
+        route: '/tracker',
+        element: '[data-tour="goal"]',
+        title: 'Tracking a goal',
+        description:
+            'Each goal shows how much you’ve saved toward its target. It grows whenever a card puts money toward it, starting from any amount you already had when you created it.',
+        side: 'right',
+        align: 'start'
+    },
+    {
+        route: '/tracker',
+        element: '[data-tour="goal-actions"]',
+        title: 'Managing a goal',
+        description:
+            'Use <strong>±</strong> to add or take out money that didn’t come from a paycheck, and the <strong>pencil</strong> to rename it or change the target. When you’re done funding a goal, <strong>Close</strong> it so new cards stop offering it. You can reopen it any time.',
+        side: 'right',
+        align: 'start'
+    },
+    {
+        route: '/tracker',
+        dialog: 'adjust-goal',
+        element: '[data-tour="adjust-goal-dialog"]',
+        title: 'Adjusting a goal',
+        description:
+            'Pick <strong>+</strong> to add money or <strong>−</strong> to take some out, enter the amount, and add a note if you like. Every adjustment is listed under History, where you can remove one if it was a mistake.',
         side: 'right',
         align: 'start'
     },

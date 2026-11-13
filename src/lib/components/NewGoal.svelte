@@ -6,20 +6,30 @@
     import { enhance } from "$app/forms";
     import { validateGoalForm, type GoalFormErrors } from "$lib/validation";
     import { parseToCents } from "$lib/money";
+    import type { SampleGoalForm } from "$lib/tour/sample-data";
+
+    let {
+        open: goalOpen = $bindable(false),
+        sample
+    }: {
+        open?: boolean;
+        // Set while the intro tour is showing this form: it opens filled with these
+        // example values, can't be typed in, and can't be submitted.
+        sample?: SampleGoalForm;
+    } = $props();
 
     let name = $state<string>("");
     let targetAmount = $state<string>("");
     let startingAmount = $state<string>("");
 
-    let goalOpen = $state<boolean>(false);
     let fieldErrors = $state<GoalFormErrors>({});
     let errorMsg = $state<string>("");
 
     $effect(() => {
         if (!goalOpen) {
-            name = "";
-            targetAmount = "";
-            startingAmount = "";
+            name = sample?.name ?? "";
+            targetAmount = sample?.targetAmount ?? "";
+            startingAmount = sample?.startingAmount ?? "";
             fieldErrors = {};
             errorMsg = "";
         }
@@ -45,11 +55,17 @@
     <Dialog.Trigger type="button" class={buttonVariants({ variant: "secondary" })}>
         New Goal +
     </Dialog.Trigger>
-    <Dialog.Content>
+    <Dialog.Content data-tour="new-goal-dialog">
         <form
             method="POST"
             action="?/createGoal"
+            inert={!!sample}
             use:enhance={({ cancel }) => {
+                // The tour's example form is only there to look at.
+                if (sample) {
+                    cancel();
+                    return;
+                }
                 const errors = validate();
                 if (Object.keys(errors).length > 0) {
                     fieldErrors = errors;

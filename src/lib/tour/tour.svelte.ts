@@ -3,7 +3,7 @@ import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import { page } from '$app/state';
 import type { Driver, DriveStep } from 'driver.js';
-import { TOUR_STEPS, type TourRoute, type TourStep } from './steps';
+import { TOUR_STEPS, type TourDialog, type TourRoute, type TourStep } from './steps';
 
 // Remembers the current step so a refresh mid-tour picks up where it was.
 const STORAGE_KEY = 'tht-tour-step';
@@ -53,8 +53,12 @@ function toDriveStep(step: TourStep): DriveStep {
 class Tour {
     /** True while the tour is on screen. The tracker shows a sample card off this. */
     active = $state(false);
-    /** The tracker's New Card dialog, bound here so the tour can open and close it. */
-    addCardOpen = $state(false);
+    /** Whether each of the tracker's dialogs is open, bound here so the tour can open and close them. */
+    dialogs = $state<Record<TourDialog, boolean>>({
+        'new-card': false,
+        'new-goal': false,
+        'adjust-goal': false
+    });
 
     #driver: Driver | undefined;
     #index = 0;
@@ -226,8 +230,8 @@ class Tour {
 
     /** Gets the app into the state `step` needs. False if its page couldn't be reached. */
     async #prepare(step: TourStep): Promise<boolean> {
-        if (!step.dialog && this.addCardOpen) {
-            this.addCardOpen = false;
+        // Close whichever dialog the previous step had open, unless this step is in it too.
+        if (this.#closeDialogs(step.dialog)) {
             await tick();
             await sleep(DIALOG_SETTLE_MS);
         }
@@ -236,13 +240,25 @@ class Tour {
             return false;
         }
 
-        if (step.dialog && !this.addCardOpen) {
-            this.addCardOpen = true;
+        if (step.dialog && !this.dialogs[step.dialog]) {
+            this.dialogs[step.dialog] = true;
             await tick();
             await sleep(DIALOG_SETTLE_MS);
         }
 
         return true;
+    }
+
+    /** Closes every dialog except `keep`. True if one was open. */
+    #closeDialogs(keep?: TourDialog): boolean {
+        let closedAny = false;
+        for (const name of Object.keys(this.dialogs) as TourDialog[]) {
+            if (name !== keep && this.dialogs[name]) {
+                this.dialogs[name] = false;
+                closedAny = true;
+            }
+        }
+        return closedAny;
     }
 
     /** Takes the tour off screen. `markSeen` records it so it won't auto-start again. */
@@ -252,7 +268,7 @@ class Tour {
         }
 
         this.active = false;
-        this.addCardOpen = false;
+        this.#closeDialogs();
         sessionStorage.removeItem(STORAGE_KEY);
 
         this.#silent = true;
