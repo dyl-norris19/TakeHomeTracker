@@ -4,7 +4,9 @@ import { cards } from '../schema/cards';
 import { cardGoalAllocations } from '../schema/savings-goals';
 import type { CardBudget } from '$lib/money';
 
-export type CardBill = { name: string; amountCents: number };
+// `dueDate` (YYYY-MM-DD) is only on recurring bills that had one when the card
+// was made; older cards and other bills don't have it.
+export type CardBill = { name: string; amountCents: number; dueDate?: string | null };
 export type CardGoalAllocation = { goalId: number; amountCents: number };
 
 export type Card = {

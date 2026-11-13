@@ -1,9 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getPaydaySettings } from '$lib/server/db/queries/payday-settings';
-import { upsertPaydaySettings } from '$lib/server/db/commands/payday-settings';
 import { getRecurringBills } from '$lib/server/db/queries/recurring-bills';
-import { replaceRecurringBills } from '$lib/server/db/commands/recurring-bills';
 import { getCardsByUser } from '$lib/server/db/queries/cards';
 import {
     createCard as insertCard,
@@ -23,10 +21,10 @@ import { getFormString } from '$lib/server/form-data';
 import {
     MONTHS,
     cardBudget,
-    validateBills,
     validateAdjustmentForm,
     validateCardForm,
     validateGoalForm,
+    type CardBillInput,
     type CardFormValues,
     type GoalAllocationInput
 } from '$lib/validation';
@@ -36,7 +34,7 @@ import {
     type BudgetMode,
     type CardBudget
 } from '$lib/money';
-import { isMonthly, parseMonthValue, resolvePaydate, type PaydaySettings } from '$lib/paydates';
+import { isMonthly, parseIsoDate, parseMonthValue, resolvePaydate, type PaydaySettings } from '$lib/paydates';
 
 function parseBudgetMethod(raw: string): 'percent' | 'flat' | null {
     if (raw === '%') {
@@ -55,7 +53,7 @@ function parseBudgetMode(raw: string): BudgetMode | null {
     return null;
 }
 
-function parseBills(raw: FormDataEntryValue | null): { name: string; amountCents: number }[] | null {
+function parseBills(raw: FormDataEntryValue | null): CardBillInput[] | null {
     if (typeof raw !== 'string') {
         return null;
     }
@@ -73,10 +71,19 @@ function parseBills(raw: FormDataEntryValue | null): { name: string; amountCents
             (bill) =>
                 bill &&
                 typeof bill.name === 'string' &&
-                Number.isInteger(bill.amountCents)
+                Number.isInteger(bill.amountCents) &&
+                (bill.dueDate == null || typeof bill.dueDate === 'string')
         );
+    if (!isValid) {
+        return null;
+    }
 
-    return isValid ? (bills as { name: string; amountCents: number }[]) : null;
+    // Rebuild each bill so only known fields are stored; drop a malformed due date.
+    return (bills as CardBillInput[]).map((bill) => ({
+        name: bill.name,
+        amountCents: bill.amountCents,
+        ...(bill.dueDate && parseIsoDate(bill.dueDate) ? { dueDate: bill.dueDate } : {})
+    }));
 }
 
 function parseGoalAllocations(raw: FormDataEntryValue | null): GoalAllocationInput[] | null {
@@ -194,45 +201,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-    updatePaydate: async ({ request, locals }) => {
-        if (!locals.user) {
-            return fail(401);
-        }
-
-        const formData = await request.formData();
-        const paydateSeconds = Number(formData.get('paydate'));
-        const frequency = Number(formData.get('frequency'));
-
-        if (!paydateSeconds || Number.isNaN(paydateSeconds)) {
-            return fail(400, { paydateError: 'Pick your paydate.' });
-        }
-        if (![1, 2, 4].includes(frequency)) {
-            return fail(400, { paydateError: 'Choose how often you get paid.' });
-        }
-
-        await upsertPaydaySettings(locals.user.id, new Date(paydateSeconds * 1000), frequency);
-
-        return { paydateSuccess: true };
-    },
-
-    updateRecurringBills: async ({ request, locals }) => {
-        if (!locals.user) {
-            return fail(401);
-        }
-
-        const formData = await request.formData();
-        const bills = parseBills(formData.get('bills'));
-
-        const billsError = validateBills(bills, 'bills');
-        if (billsError) {
-            return fail(400, { billsError });
-        }
-
-        await replaceRecurringBills(locals.user.id, bills!);
-
-        return { billsSuccess: true };
-    },
-
     createCard: async ({ request, locals }) => {
         if (!locals.user) {
             return fail(401);
@@ -241,7 +209,7 @@ export const actions: Actions = {
         const paydaySettings = await getPaydaySettings(locals.user.id);
         if (!paydaySettings) {
             return fail(400, {
-                cardError: 'Set your paydate first.'
+                cardError: 'Set your pay schedule in Settings first.'
             });
         }
 
@@ -298,7 +266,7 @@ export const actions: Actions = {
         const paydaySettings = await getPaydaySettings(locals.user.id);
         if (!paydaySettings) {
             return fail(400, {
-                cardError: 'Set your paydate first.'
+                cardError: 'Set your pay schedule in Settings first.'
             });
         }
 

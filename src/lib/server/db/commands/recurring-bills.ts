@@ -1,11 +1,9 @@
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db/index';
 import { recurringBills } from '$lib/server/db/schema/recurring-bills';
+import type { RecurringBill } from '$lib/bills';
 
-export async function replaceRecurringBills(
-    userId: number,
-    bills: { name: string; amountCents: number }[]
-) {
+export async function replaceRecurringBills(userId: number, bills: RecurringBill[]) {
     return db.transaction((tx) => {
         tx.delete(recurringBills).where(eq(recurringBills.userId, userId)).run();
 
@@ -15,7 +13,7 @@ export async function replaceRecurringBills(
 
         return tx
             .insert(recurringBills)
-            .values(bills.map((bill) => ({ userId, name: bill.name, amountCents: bill.amountCents })))
+            .values(bills.map((bill) => ({ userId, ...bill })))
             .returning()
             .all();
     });

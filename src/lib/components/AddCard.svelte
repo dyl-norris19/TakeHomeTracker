@@ -7,6 +7,8 @@
     import * as RadioGroup from "$lib/components/ui/radio-group/index.js";
     import * as Dialog from "$lib/components/ui/dialog/index";
     import { enhance } from "$app/forms";
+    import { untrack } from "svelte";
+    import { billsForPaycheck, formatDueDate, type RecurringBill } from "$lib/bills";
     import {
         cardBreakdown,
         validateCardForm,
@@ -19,6 +21,7 @@
         formatCents,
         parsePercentToBasisPoints,
         parseToCents,
+        percentOfCents,
         type BudgetMode
     } from "$lib/money";
     import {
@@ -28,8 +31,10 @@
         parseMonthValue,
         paycheckCountInMonth,
         resolvePaydate,
-        toMonthValue
+        toMonthValue,
+        type PaydaySettings
     } from "$lib/paydates";
+    import { resolve } from "$app/paths";
     import { monthNameToIndex } from "$lib/validation";
     import type { Card } from "$lib/server/db/queries/cards";
     import type { Goal } from "$lib/server/db/queries/savings-goals";
@@ -43,8 +48,8 @@
         goals = [],
         open = $bindable(false)
     }: {
-        recurringBills?: { name: string; amountCents: number }[];
-        paydaySettings?: { paydate: Date; frequency: number };
+        recurringBills?: RecurringBill[];
+        paydaySettings?: PaydaySettings & { takeHomeCents?: number | null };
         cardToEdit?: Card;
         goals?: Goal[];
         open?: boolean;
@@ -115,7 +120,15 @@
     let budgetMode = $state<BudgetMode>("splurge");
     let budgetType = $state<string>("");
     let budgetAmount = $state<string | number>("");
-    let reoccurBills = $state<{ name: string; amount: string | number }[]>([]);
+    // Recurring bills on this card. `basisPoints` is set for a percent bill, whose
+    // amount follows the pay amount; `dueDate` (YYYY-MM-DD) for a single bill.
+    type CardRecurringBill = {
+        name: string;
+        amount: string | number;
+        basisPoints: number | null;
+        dueDate: string | null;
+    };
+    let reoccurBills = $state<CardRecurringBill[]>([]);
     let otherBills = $state<{ name: string; amount: string | number }[]>([]);
     let notes = $state<string>("");
     let goalAmounts = $state<
@@ -126,6 +139,43 @@
 
     let fieldErrors = $state<CardFormErrors>({});
     let submitError = $state<string>("");
+
+    // Fills the recurring bills for the chosen paycheck from settings: single
+    // bills whose due date falls in this pay period, plus split and percent
+    // bills. Edits to them are dropped when the month or paycheck changes.
+    function fillRecurringBills() {
+        reoccurBills =
+            paydaySettings && parsedMonth
+                ? billsForPaycheck(
+                      recurringBills,
+                      paydaySettings,
+                      parsedMonth.year,
+                      parsedMonth.monthIndex,
+                      monthly ? 1 : Number(paycheckNumber)
+                  ).map((bill) => ({
+                      name: bill.name,
+                      amount: bill.amountCents === null ? "" : centsToInput(bill.amountCents),
+                      basisPoints: bill.basisPoints,
+                      dueDate: bill.dueDate
+                  }))
+                : [];
+    }
+
+    // New cards only: re-fill when the month or paycheck changes.
+    $effect(() => {
+        if (!cardToEdit) {
+            fillRecurringBills();
+        }
+    });
+
+    /** A percent bill follows the pay amount (NaN until that's a number). */
+    function recurringBillCents(bill: CardRecurringBill): number {
+        if (bill.basisPoints === null) {
+            return parseToCents(bill.amount);
+        }
+        const payCents = parseToCents(payAmount);
+        return Number.isInteger(payCents) ? percentOfCents(payCents, bill.basisPoints) : Number.NaN;
+    }
 
     // While the dialog is closed, keep the form seeded so opening it shows the
     // right starting point.
@@ -141,9 +191,12 @@
                     cardToEdit.budget.method === "percent"
                         ? basisPointsToInput(cardToEdit.budget.basisPoints)
                         : centsToInput(cardToEdit.budget.flatCents);
+                // Saved cards keep the bills they were made with; settings changes never reach them.
                 reoccurBills = cardToEdit.reoccurBills.map((bill) => ({
                     name: bill.name,
-                    amount: centsToInput(bill.amountCents)
+                    amount: centsToInput(bill.amountCents),
+                    basisPoints: null,
+                    dueDate: bill.dueDate ?? null
                 }));
                 otherBills = cardToEdit.otherBills.map((bill) => ({
                     name: bill.name,
@@ -155,14 +208,13 @@
                 const nearest = paydaySettings ? nearestPaycheck(paydaySettings) : null;
                 selectedMonth = nearest?.value ?? "";
                 paycheckNumber = nearest ? String(nearest.paycheckNumber) : "1";
-                payAmount = "";
+                // Prefill the usual take-home from settings; still editable per card.
+                payAmount =
+                    paydaySettings?.takeHomeCents != null ? centsToInput(paydaySettings.takeHomeCents) : "";
                 budgetMode = "splurge";
                 budgetType = "";
                 budgetAmount = "";
-                reoccurBills = recurringBills.map((bill) => ({
-                    name: bill.name,
-                    amount: centsToInput(bill.amountCents)
-                }));
+                untrack(fillRecurringBills);
                 otherBills = [];
                 notes = "";
             }
@@ -216,7 +268,8 @@
                     : parseToCents(budgetAmount),
             reoccurBills: reoccurBills.map((bill) => ({
                 name: bill.name,
-                amountCents: parseToCents(bill.amount)
+                amountCents: recurringBillCents(bill),
+                dueDate: bill.dueDate
             })),
             otherBills: otherBills.map((bill) => ({
                 name: bill.name,
@@ -245,7 +298,11 @@
 
     let reoccurBillsJson = $derived(
         JSON.stringify(
-            reoccurBills.map((bill) => ({ name: bill.name, amountCents: parseToCents(bill.amount) }))
+            reoccurBills.map((bill) => ({
+                name: bill.name,
+                amountCents: recurringBillCents(bill),
+                dueDate: bill.dueDate
+            }))
         )
     );
     let otherBillsJson = $derived(
@@ -312,7 +369,7 @@
             </Dialog.Header>
             {#if !paydaySettings}
                 <p class="text-sm text-red-500">
-                    Set your paydate first (the “Paydate” button) — new cards are dated from it.
+                    Set your pay schedule in <a href={resolve("/settings")} class="underline">Settings</a> first — new cards are dated from it.
                 </p>
             {/if}
             {#if submitError}
@@ -375,8 +432,30 @@
                 <h2 class="font-bold">Reoccuring Bills</h2>
                 <div class="grid grid-cols-4 items-center gap-4">
                     {#each reoccurBills as bill (bill)}
+                        {@const cents = recurringBillCents(bill)}
                         <Label class="text-right">{bill.name}</Label>
-                        <Input class="col-span-3 w-[180px]" bind:value={bill.amount} />
+                        <div class="col-span-3 flex items-center gap-2">
+                            <!-- A percent bill shows its amount from the pay amount and follows it
+                                 until typed over; typing turns it into a plain amount for this card. -->
+                            <Input
+                                class="w-[180px]"
+                                bind:value={
+                                    () => (bill.basisPoints === null ? bill.amount : Number.isInteger(cents) ? centsToInput(cents) : ""),
+                                    (v) => {
+                                        bill.amount = v;
+                                        bill.basisPoints = null;
+                                    }
+                                }
+                            />
+                            {#if bill.basisPoints !== null}
+                                <span class="text-muted-foreground text-xs">{basisPointsToInput(bill.basisPoints)}% of pay</span>
+                            {/if}
+                            {#if bill.dueDate}
+                                <span class="text-muted-foreground text-xs">Due {formatDueDate(bill.dueDate)}</span>
+                            {/if}
+                        </div>
+                    {:else}
+                        <p class="text-muted-foreground col-span-full text-sm">(None for this paycheck)</p>
                     {/each}
                     {@render fieldError(fieldErrors.reoccurBills)}
                 </div>
