@@ -70,8 +70,11 @@ export function shiftForWeekend(date: Date, rule: WeekendRule): Date {
 		return date;
 	}
 	// Saturday -> Fri (-1) / Mon (+2); Sunday -> Fri (-2) / Mon (+1).
-	const shift = rule === 'before' ? (day === 6 ? -1 : -2) : day === 6 ? 2 : 1;
-	return addDays(date, shift);
+	const saturday = day === 6;
+	if (rule === 'before') {
+		return addDays(date, saturday ? -1 : -2);
+	}
+	return addDays(date, saturday ? 2 : 1);
 }
 
 /**
@@ -96,11 +99,10 @@ export function paydatesInMonth(
 				: [settings.payDay1, settings.payDay2]
 		).filter((day): day is number => day !== null);
 		const last = lastDayOfMonth(year, monthIndex);
-		return days
-			.sort((a, b) => a - b)
-			.map((day) =>
-				shiftForWeekend(new Date(year, monthIndex, Math.min(day, last)), settings.weekendRule)
-			);
+		days.sort((a, b) => a - b);
+		return days.map((day) =>
+			shiftForWeekend(new Date(year, monthIndex, Math.min(day, last)), settings.weekendRule)
+		);
 	}
 
 	const anchor = settings.anchorDate ? parseIsoDate(settings.anchorDate) : null;

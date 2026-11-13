@@ -13,17 +13,29 @@
     import Trash2 from "@lucide/svelte/icons/trash-2";
     import Undo2 from "@lucide/svelte/icons/undo-2";
     import Plus from "@lucide/svelte/icons/plus";
-    import { centsToInput, formatCents, parseToCents } from "$lib/money";
+    import {
+        basisPointsToInput,
+        centsToInput,
+        formatCents,
+        parsePercentToBasisPoints,
+        parseToCents,
+        percentOfCents
+    } from "$lib/money";
     import { cn } from "$lib/utils";
     import { SvelteSet } from "svelte/reactivity";
+    import { enhance } from "$app/forms";
+    import type { Allocation, AmountType, RecurringBill } from "$lib/bills";
+    import { validateRecurringBills } from "$lib/validation";
 
+    // Strings (what the inputs hold) so the dirty check is a JSON compare;
+    // toRecurringBill() converts for validation and saving.
     type Bill = {
         key: number;
         name: string;
-        amount: string;
-        amountType: "flat" | "percent";
+        amount: string; // dollars for flat, percent for percent
+        amountType: AmountType;
         dueDay: string; // "" = not set
-        allocation: "split" | "single";
+        allocation: Allocation;
     };
 
     let {
@@ -31,7 +43,7 @@
         takeHome = "",
         dirty = $bindable(false)
     }: {
-        recurringBills: { name: string; amountCents: number }[];
+        recurringBills: RecurringBill[];
         takeHome?: string;
         dirty?: boolean;
     } = $props();
@@ -42,10 +54,13 @@
         return recurringBills.map((bill) => ({
             key: nextKey++,
             name: bill.name,
-            amount: centsToInput(bill.amountCents),
-            amountType: "flat",
-            dueDay: "",
-            allocation: "single"
+            amount:
+                bill.amountType === "percent"
+                    ? basisPointsToInput(bill.basisPoints ?? 0)
+                    : centsToInput(bill.amountCents ?? 0),
+            amountType: bill.amountType,
+            dueDay: bill.dueDay === null ? "" : String(bill.dueDay),
+            allocation: bill.allocation
         }));
     }
 
@@ -56,6 +71,7 @@
     // Deleted rows stay on screen (struck through, with Undo) until Save.
     const deleted = new SvelteSet<number>();
     let saving = $state(false);
+    let serverError = $state("");
 
     let savedByKey = $derived(new Map(saved.map((bill) => [bill.key, JSON.stringify(bill)])));
 
@@ -70,11 +86,22 @@
         dirty = bills.length !== saved.length || deleted.size > 0 || bills.some((bill) => rowState(bill) !== "clean");
     });
 
-    let error = $derived(
-        bills.some((bill) => !deleted.has(bill.key) && !bill.name.trim())
-            ? "Every bill needs a name."
-            : ""
-    );
+    function toRecurringBill(bill: Bill): RecurringBill {
+        const percent = bill.amountType === "percent";
+        return {
+            name: bill.name,
+            amountType: bill.amountType,
+            amountCents: percent ? null : parseToCents(bill.amount),
+            basisPoints: percent ? parsePercentToBasisPoints(bill.amount) : null,
+            allocation: bill.allocation,
+            dueDay: bill.dueDay ? Number(bill.dueDay) : null
+        };
+    }
+
+    // What Save sends: every bill not marked for removal.
+    let kept = $derived(bills.filter((bill) => !deleted.has(bill.key)));
+    let billsJson = $derived(JSON.stringify(kept.map(toRecurringBill)));
+    let error = $derived(validateRecurringBills(kept.map(toRecurringBill)) ?? "");
 
     const dayOptions = Array.from({ length: 31 }, (_, i) => String(i + 1));
     function ordinal(day: string): string {
@@ -83,11 +110,13 @@
         return `${n}${suffix}`;
     }
 
+    // Uses the salary from the pay schedule section as an example; the real
+    // amount on each card comes from that card's pay.
     function percentHint(bill: Bill): string {
         const pay = parseToCents(takeHome);
-        const pct = Number(bill.amount);
-        if (!pay || !pct) return "";
-        return `≈ ${formatCents(Math.round((pay * pct) / 100))} of ${formatCents(pay)}`;
+        const basisPoints = parsePercentToBasisPoints(bill.amount);
+        if (!Number.isInteger(pay) || pay <= 0 || !Number.isInteger(basisPoints) || basisPoints <= 0) return "";
+        return `≈ ${formatCents(percentOfCents(pay, basisPoints))} of ${formatCents(pay)}`;
     }
 
     function addBill() {
@@ -106,27 +135,10 @@
         deleted.delete(bill.key);
     }
 
-    // Prototype: fakes the round trip so the spinner and toast can be seen.
-    // Nothing is sent to the server yet.
-    function save(event: SubmitEvent) {
-        event.preventDefault();
-        if (error) {
-            toast.error(error);
-            return;
-        }
-        saving = true;
-        setTimeout(() => {
-            bills = bills.filter((bill) => !deleted.has(bill.key));
-            deleted.clear();
-            saved = structuredClone($state.snapshot(bills));
-            saving = false;
-            toast.success("Recurring bills saved");
-        }, 800);
-    }
-
     function discard() {
         bills = structuredClone($state.snapshot(saved));
         deleted.clear();
+        serverError = "";
     }
 
     // Edited rows aren't marked; the disabled/enabled Save button and the toast
@@ -147,7 +159,39 @@
     </Tooltip.Root>
 {/snippet}
 
-<form onsubmit={save}>
+<form
+    method="POST"
+    action="?/updateRecurringBills"
+    use:enhance={({ cancel }) => {
+        if (error) {
+            toast.error(error);
+            cancel();
+            return;
+        }
+        saving = true;
+        serverError = "";
+        const submitted = $state.snapshot(kept);
+        return async ({ result, update }) => {
+            saving = false;
+            if (result.type === "success") {
+                // Keep the same rows (and keys) on screen; they're now the saved state.
+                bills = structuredClone(submitted);
+                deleted.clear();
+                saved = structuredClone(submitted);
+                toast.success("Recurring bills saved");
+                await update({ reset: false });
+            } else if (result.type === "failure") {
+                const data = result.data as { billsError?: string } | undefined;
+                serverError = data?.billsError ?? "Couldn’t save — try again.";
+                toast.error(serverError);
+            } else {
+                toast.error("Something went wrong — try again.");
+                await update({ reset: false });
+            }
+        };
+    }}
+>
+    <input type="hidden" name="bills" value={billsJson} />
     <Card.Root>
         <Card.Header>
             <Card.Title>Recurring bills</Card.Title>
@@ -230,7 +274,7 @@
                                             <span class="text-muted-foreground text-xs">
                                                 {bill.allocation === "single"
                                                     ? "On the last paycheck on or before the due day"
-                                                    : "An equal share on every paycheck"}
+                                                    : "Monthly total, shared evenly across your paychecks"}
                                             </span>
                                         </div>
                                     </Table.Cell>
@@ -268,7 +312,7 @@
             </Button>
         </Card.Content>
         <Card.Footer class="border-t pt-4">
-            <SaveBar {dirty} {saving} error={dirty ? error : ""} disabled={!!error} ondiscard={discard} />
+            <SaveBar {dirty} {saving} error={dirty ? error || serverError : ""} disabled={!!error} ondiscard={discard} />
         </Card.Footer>
     </Card.Root>
 </form>

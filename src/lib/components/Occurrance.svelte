@@ -11,6 +11,7 @@
     import type { Card as CardData } from "$lib/server/db/queries/cards";
     import type { Goal } from "$lib/server/db/queries/savings-goals";
     import type { PaydaySettings } from "$lib/paydates";
+    import { formatDueDate } from "$lib/bills";
 
     let {
         card,
@@ -141,7 +142,12 @@
         </Card.Header>
         <Card.Content>
             {#each card.reoccurBills as bill, index (bill.name + index)}
-                <p>{bill.name}: {formatCents(bill.amountCents)}</p>
+                <p>
+                    {bill.name}: {formatCents(bill.amountCents)}
+                    {#if bill.dueDate}
+                        <span class="text-muted-foreground text-xs">(due {formatDueDate(bill.dueDate)})</span>
+                    {/if}
+                </p>
             {/each}
             {#each card.otherBills as bill, index (bill.name + index)}
                 <p>{bill.name}: {formatCents(bill.amountCents)}</p>

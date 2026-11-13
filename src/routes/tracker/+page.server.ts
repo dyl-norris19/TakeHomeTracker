@@ -2,7 +2,6 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getPaydaySettings } from '$lib/server/db/queries/payday-settings';
 import { getRecurringBills } from '$lib/server/db/queries/recurring-bills';
-import { replaceRecurringBills } from '$lib/server/db/commands/recurring-bills';
 import { getCardsByUser } from '$lib/server/db/queries/cards';
 import {
     createCard as insertCard,
@@ -22,10 +21,10 @@ import { getFormString } from '$lib/server/form-data';
 import {
     MONTHS,
     cardBudget,
-    validateBills,
     validateAdjustmentForm,
     validateCardForm,
     validateGoalForm,
+    type CardBillInput,
     type CardFormValues,
     type GoalAllocationInput
 } from '$lib/validation';
@@ -35,7 +34,7 @@ import {
     type BudgetMode,
     type CardBudget
 } from '$lib/money';
-import { isMonthly, parseMonthValue, resolvePaydate, type PaydaySettings } from '$lib/paydates';
+import { isMonthly, parseIsoDate, parseMonthValue, resolvePaydate, type PaydaySettings } from '$lib/paydates';
 
 function parseBudgetMethod(raw: string): 'percent' | 'flat' | null {
     if (raw === '%') {
@@ -54,7 +53,7 @@ function parseBudgetMode(raw: string): BudgetMode | null {
     return null;
 }
 
-function parseBills(raw: FormDataEntryValue | null): { name: string; amountCents: number }[] | null {
+function parseBills(raw: FormDataEntryValue | null): CardBillInput[] | null {
     if (typeof raw !== 'string') {
         return null;
     }
@@ -72,10 +71,19 @@ function parseBills(raw: FormDataEntryValue | null): { name: string; amountCents
             (bill) =>
                 bill &&
                 typeof bill.name === 'string' &&
-                Number.isInteger(bill.amountCents)
+                Number.isInteger(bill.amountCents) &&
+                (bill.dueDate == null || typeof bill.dueDate === 'string')
         );
+    if (!isValid) {
+        return null;
+    }
 
-    return isValid ? (bills as { name: string; amountCents: number }[]) : null;
+    // Rebuild each bill so only known fields are stored; drop a malformed due date.
+    return (bills as CardBillInput[]).map((bill) => ({
+        name: bill.name,
+        amountCents: bill.amountCents,
+        ...(bill.dueDate && parseIsoDate(bill.dueDate) ? { dueDate: bill.dueDate } : {})
+    }));
 }
 
 function parseGoalAllocations(raw: FormDataEntryValue | null): GoalAllocationInput[] | null {
@@ -193,24 +201,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-    updateRecurringBills: async ({ request, locals }) => {
-        if (!locals.user) {
-            return fail(401);
-        }
-
-        const formData = await request.formData();
-        const bills = parseBills(formData.get('bills'));
-
-        const billsError = validateBills(bills, 'bills');
-        if (billsError) {
-            return fail(400, { billsError });
-        }
-
-        await replaceRecurringBills(locals.user.id, bills!);
-
-        return { billsSuccess: true };
-    },
-
     createCard: async ({ request, locals }) => {
         if (!locals.user) {
             return fail(401);

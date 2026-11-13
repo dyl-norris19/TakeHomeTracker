@@ -1,6 +1,7 @@
 import { budgetBreakdown, type BudgetMethod, type BudgetMode, type CardBudget } from './money';
 // Type-only: paydates.ts imports MONTHS from here, so a value import would be circular.
 import type { Frequency, WeekendRule } from './paydates';
+import type { RecurringBill } from './bills';
 
 // Basic shape check: something, an @, dot-separated labels, at least one dot.
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
@@ -34,8 +35,11 @@ export function monthNameToIndex(name: string): number {
 	return (MONTHS as readonly string[]).indexOf(name);
 }
 
-/** A bill as it's stored/computed: an integer-cents amount. */
-export type CardBillInput = { name: string; amountCents: number };
+/**
+ * A bill as it's stored/computed: an integer-cents amount. Recurring bills on
+ * a card also carry the `YYYY-MM-DD` date they're due, when they have one.
+ */
+export type CardBillInput = { name: string; amountCents: number; dueDate?: string | null };
 
 /** A slice of a card's savings put toward one savings goal. */
 export type GoalAllocationInput = { goalId: number; amountCents: number };
@@ -325,40 +329,93 @@ function isDayOfMonth(day: number | null): boolean {
  * good to save. Only the fields the chosen frequency uses are checked.
  */
 export function validatePaySchedule(values: PayScheduleValues): string | null {
-	const { frequency } = values;
+	return scheduleError(values) ?? takeHomeError(values.takeHomeCents);
+}
 
+/** Checks the frequency and the date fields it uses. */
+function scheduleError(values: PayScheduleValues): string | null {
+	const { frequency } = values;
 	if (frequency === null) {
 		return 'Choose how often you get paid.';
 	}
 	if (frequency === 'weekly' || frequency === 'biweekly') {
-		if (!values.anchorDate || !/^\d{4}-\d{2}-\d{2}$/.test(values.anchorDate)) {
-			return 'Pick a recent payday.';
-		}
-	} else {
-		if (frequency === 'monthly' && !isDayOfMonth(values.payDay1)) {
-			return 'Pick the day you get paid.';
-		}
-		if (frequency === 'semimonthly') {
-			if (!isDayOfMonth(values.payDay1) || !isDayOfMonth(values.payDay2)) {
-				return 'Pick both days you get paid.';
-			}
-			if (values.payDay1 === values.payDay2) {
-				return 'Pick two different days.';
-			}
-		}
-		if (values.weekendRule === null) {
-			return 'Choose what happens when payday lands on a weekend.';
+		const valid = !!values.anchorDate && /^\d{4}-\d{2}-\d{2}$/.test(values.anchorDate);
+		return valid ? null : 'Pick a recent payday.';
+	}
+	const payDays = payDaysError(values);
+	if (payDays) {
+		return payDays;
+	}
+	return values.weekendRule === null ? 'Choose what happens when payday lands on a weekend.' : null;
+}
+
+/** Checks the pay day(s) of a monthly / semimonthly schedule. */
+function payDaysError(values: PayScheduleValues): string | null {
+	if (values.frequency === 'monthly') {
+		return isDayOfMonth(values.payDay1) ? null : 'Pick the day you get paid.';
+	}
+	if (!isDayOfMonth(values.payDay1) || !isDayOfMonth(values.payDay2)) {
+		return 'Pick both days you get paid.';
+	}
+	return values.payDay1 === values.payDay2 ? 'Pick two different days.' : null;
+}
+
+/** Checks the optional salary. */
+function takeHomeError(takeHomeCents: number | null): string | null {
+	if (takeHomeCents === null) {
+		return null;
+	}
+	if (!Number.isInteger(takeHomeCents)) {
+		return 'Salary must be a number.';
+	}
+	return takeHomeCents <= 0 ? 'Salary must be greater than 0.' : null;
+}
+
+/**
+ * Validates the recurring bills list from settings. Returns the first problem
+ * found, or null when every bill is good to save. Only the fields a bill's
+ * type uses are checked.
+ */
+export function validateRecurringBills(bills: RecurringBill[] | null): string | null {
+	if (bills === null) {
+		return "Couldn't read your bills — reload and try again.";
+	}
+	for (const bill of bills) {
+		const error = recurringBillError(bill);
+		if (error) {
+			return error;
 		}
 	}
+	return null;
+}
 
-	if (values.takeHomeCents !== null) {
-		if (!Number.isInteger(values.takeHomeCents)) {
-			return 'Salary must be a number.';
-		}
-		if (values.takeHomeCents <= 0) {
-			return 'Salary must be greater than 0.';
-		}
+/** Checks one recurring bill, looking only at the fields its type uses. */
+function recurringBillError(bill: RecurringBill): string | null {
+	const name = bill.name.trim();
+	if (!name) {
+		return 'Every bill needs a name.';
 	}
+	if (bill.amountType === 'percent') {
+		return percentBillError(name, bill.basisPoints);
+	}
+	if (bill.amountCents === null || !Number.isInteger(bill.amountCents)) {
+		return `Enter an amount for "${name}".`;
+	}
+	if (bill.amountCents < 0) {
+		return `"${name}" can't be a negative amount.`;
+	}
+	if (bill.allocation === 'single' && !isDayOfMonth(bill.dueDay)) {
+		return `Pick a due day for "${name}".`;
+	}
+	return null;
+}
 
+function percentBillError(name: string, basisPoints: number | null): string | null {
+	if (basisPoints === null || !Number.isInteger(basisPoints)) {
+		return `Enter a percentage for "${name}".`;
+	}
+	if (basisPoints <= 0 || basisPoints > 10000) {
+		return `"${name}" must be between 0 and 100%.`;
+	}
 	return null;
 }

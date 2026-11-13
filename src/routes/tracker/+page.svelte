@@ -1,7 +1,6 @@
 <script lang="ts">
     import Occurrance from '$lib/components/Occurrance.svelte'
     import AddCard from '$lib/components/AddCard.svelte'
-    import NewRecBill from '$lib/components/NewRecBill.svelte';
     import NewGoal from '$lib/components/NewGoal.svelte';
     import SavingFor from '$lib/components/SavingFor.svelte';
     import 'normalize.css';
@@ -84,7 +83,6 @@
                             paydaySettings={data.paydaySettings}
                             goals={data.goals}
                         />
-                        <NewRecBill recurringBills={data.recurringBills} />
                         <NewGoal />
                     </div>
                     {#if sortedGoals.length > 0}
