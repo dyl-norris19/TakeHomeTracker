@@ -13,3 +13,7 @@ services:
       - PORT=3000
       - DATABASE_PATH=/app/data/data.sqlite
       - ORIGIN=${ORIGIN:?set ORIGIN in .env}
+      # Real client IP from the reverse proxy; login rate limiting keys on it.
+      # Without these every user appears to come from the proxy's address.
+      - ADDRESS_HEADER=X-Forwarded-For
+      - XFF_DEPTH=1

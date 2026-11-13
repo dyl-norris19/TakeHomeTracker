@@ -20,7 +20,9 @@ take-home = pay − recurring bills − one-off bills − savings
   pay date. Cards are listed by month.
 - **Accounts** – email + password sign up / log in. Passwords are hashed with
   bcrypt; sessions are server-side (a hashed token in an `httpOnly` cookie, 30-day
-  expiry with sliding renewal).
+  expiry with sliding renewal). Failed logins are rate limited: an account locks
+  for 15 minutes after 5 bad attempts, and an IP address after 20, with repeat
+  IP blocks escalating (15 min → 1 h → 4 h → 24 h → 7 days).
 
 ## Tech stack
 
@@ -99,6 +101,12 @@ docker compose up
 | `VITE_ALLOWED_HOSTS` | dev | — | Host the Vite dev server accepts. |
 | `DATABASE_PATH` | any | `data/data.sqlite` | SQLite file location. Compose sets it to `/app/data/data.sqlite`. |
 | `PORT` | prod | `3000` | Port the Node server listens on inside the container. |
+| `ADDRESS_HEADER` | prod | `X-Forwarded-For` (compose) | Header the reverse proxy puts the client IP in. Login rate limiting needs it. |
+| `XFF_DEPTH` | prod | `1` (compose) | Number of trusted proxies in front of the app. |
+
+The compose file assumes the app sits behind one reverse proxy. Without a proxy
+the `X-Forwarded-For` header is missing, so per-IP login limits are skipped (a
+warning is logged) and only the per-account limit applies.
 
 `.env` is gitignored; `.env.example` is the checked-in template.
 
@@ -128,6 +136,7 @@ src/
     components/              UI (cards, forms, navbar) + shadcn-svelte in ui/
     server/
       auth.ts                sessions, cookies, password checks
+      throttle.ts            login rate limiting + lockouts
       db/
         index.ts             better-sqlite3 + Drizzle connection
         migrate.ts           runMigrations()
